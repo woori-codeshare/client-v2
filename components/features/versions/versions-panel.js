@@ -6,6 +6,7 @@ import SnapshotItem from "./snapshot-item";
 import LiveSessionButton from "./live-session-button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWebSocket } from "@/contexts/websocket-context";
+import { toast } from "react-toastify";
 
 /**
  * 코드 스냅샷 기록과 라이브 세션 선택을 관리하는 패널 컴포넌트
@@ -113,6 +114,16 @@ export default function VersionsPanel({
             });
 
             console.log("[WebSocket] 새 스냅샷 추가:", newSnapshot);
+
+            // 토스트 알림 표시
+            toast.success("새로운 스냅샷이 생성되었습니다.", {
+              position: "top-right",
+              autoClose: 4000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
 
             setSnapshots((prevSnapshots) => {
               const updatedSnapshots = [newSnapshot, ...prevSnapshots];

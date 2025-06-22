@@ -52,7 +52,7 @@ function useInterval(callback, delay) {
 const getStorageKey = (roomId, snapshotId) => `vote_${roomId}_${snapshotId}`;
 
 // 학습 내용 이해도를 체크하기 위한 투표 패널 컴포넌트
-export default function VotingPanel({ roomId, snapshotId }) {
+export default function VotingPanel({ roomId, snapshotId, roomUuid }) {
   const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
   const [userVote, setUserVote] = useState(null);

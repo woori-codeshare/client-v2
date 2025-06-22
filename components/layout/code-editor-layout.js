@@ -92,7 +92,13 @@ export default function CodeEditorLayout({
           />
         );
       case "voting":
-        return <VotingPanel roomId={roomId} snapshotId={snapshotId} />;
+        return (
+          <VotingPanel
+            roomId={roomId}
+            snapshotId={snapshotId}
+            roomUuid={roomUuid}
+          />
+        );
       default:
         return null;
     }

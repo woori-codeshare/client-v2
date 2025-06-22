@@ -21,12 +21,14 @@ function useInterval(callback, delay) {
  * @param {string} snapshotId - 현재 스냅샷의 고유 식별자
  * @param {Array} snapshots - 전체 스냅샷 목록
  * @param {Function} onSnapshotsUpdate - 스냅샷 업데이트 핸들러
+ * @param {string} roomUuid - 방 UUID (WebSocket 구독용)
  */
 export default function QuestionsPanel({
   roomId,
   snapshotId,
   snapshots,
   onSnapshotsUpdate,
+  roomUuid,
 }) {
   // 사용자 입력 질문을 관리하는 상태
   const [newQuestion, setNewQuestion] = useState("");

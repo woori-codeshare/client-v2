@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { FaVoteYea } from "react-icons/fa";
 import { useAlert } from "@/contexts/alert-context";
 import { useWebSocket } from "@/contexts/websocket-context";
+import { toast } from "react-toastify";
 
 const VOTE_TYPES = {
   POSITIVE: {
@@ -131,6 +132,16 @@ export default function VotingPanel({ roomId, snapshotId, roomUuid }) {
               data.voteResult.voteCounts
             );
             setVoteResults(data.voteResult.voteCounts);
+
+            // 토스트 알림 표시
+            toast.info("투표 결과가 업데이트되었습니다.", {
+              position: "top-right",
+              autoClose: 3000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
           }
         } catch (error) {
           console.error("[WebSocket] 투표 결과 업데이트 파싱 실패:", error);

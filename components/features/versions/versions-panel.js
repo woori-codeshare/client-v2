@@ -5,15 +5,8 @@ import { FaHistory } from "react-icons/fa";
 import SnapshotItem from "./snapshot-item";
 import LiveSessionButton from "./live-session-button";
 import { motion, AnimatePresence } from "framer-motion";
-
-const POLLING_INTERVAL = 1000;
-
-function useInterval(callback, delay) {
-  useEffect(() => {
-    const intervalId = setInterval(callback, delay);
-    return () => clearInterval(intervalId);
-  }, [callback, delay]);
-}
+import { useWebSocket } from "@/contexts/websocket-context";
+import { toast } from "react-toastify";
 
 /**
  * 코드 스냅샷 기록과 라이브 세션 선택을 관리하는 패널 컴포넌트
@@ -31,6 +24,7 @@ export default function VersionsPanel({
   setCurrentVersion,
   onSnapshotsUpdate,
 }) {
+  const { client, connected } = useWebSocket();
   const [snapshots, setSnapshots] = useState(externalSnapshots || []);
   const isLiveSessionActive = currentVersion === null;
 
@@ -38,72 +32,124 @@ export default function VersionsPanel({
   const selectedSnapshotId =
     currentVersion !== null ? snapshots[currentVersion]?.id : null;
 
-  const fetchSnapshots = useCallback(async () => {
-    if (!roomUuid) {
-      console.log("Room UUID is not set");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/rooms/${roomUuid}/snapshots`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("Failed to fetch snapshots:", data.error);
+  // 초기 스냅샷 로드 (한 번만 실행)
+  useEffect(() => {
+    const fetchInitialSnapshots = async () => {
+      if (!roomUuid) {
+        console.log("Room UUID is not set");
         return;
       }
 
-      const formattedSnapshots = data.data
-        .map((snapshot) => ({
-          id: snapshot.snapshotId,
-          createdAt: new Date(snapshot.createdAt),
-          title: snapshot.title,
-          description: snapshot.description,
-          code: snapshot.code,
-          comments: snapshot.comments || [],
-        }))
-        .sort((a, b) => b.createdAt - a.createdAt);
+      try {
+        const response = await fetch(`/api/rooms/${roomUuid}/snapshots`);
+        const data = await response.json();
 
-      // 스냅샷 데이터가 변경된 경우에만 상태 업데이트
-      const currentSnapshotsStr = JSON.stringify(snapshots);
-      const newSnapshotsStr = JSON.stringify(formattedSnapshots);
-
-      if (currentSnapshotsStr !== newSnapshotsStr) {
-        // 현재 선택된 스냅샷의 새 인덱스 찾기
-        if (selectedSnapshotId !== null) {
-          const newIndex = formattedSnapshots.findIndex(
-            (snapshot) => snapshot.id === selectedSnapshotId
-          );
-          // 인덱스가 변경된 경우에만 업데이트
-          if (newIndex !== -1 && newIndex !== currentVersion) {
-            setCurrentVersion(newIndex);
-          }
+        if (!response.ok) {
+          console.error("Failed to fetch snapshots:", data.error);
+          return;
         }
+
+        const formattedSnapshots = data.data
+          .map((snapshot) => ({
+            id: snapshot.snapshotId,
+            createdAt: new Date(snapshot.createdAt),
+            title: snapshot.title,
+            description: snapshot.description,
+            code: snapshot.code,
+            comments: snapshot.comments || [],
+          }))
+          .sort((a, b) => b.createdAt - a.createdAt);
 
         setSnapshots(formattedSnapshots);
         onSnapshotsUpdate(formattedSnapshots);
+      } catch (error) {
+        console.error("Error fetching initial snapshots:", error);
       }
-    } catch (error) {
-      console.error("Error fetching snapshots:", error);
-    }
-  }, [
-    roomUuid,
-    onSnapshotsUpdate,
-    snapshots,
-    selectedSnapshotId,
-    currentVersion,
-    setCurrentVersion,
-  ]);
+    };
 
-  // Initial fetch
+    fetchInitialSnapshots();
+  }, [roomUuid, onSnapshotsUpdate]);
+
+  // WebSocket 구독을 통한 실시간 스냅샷 업데이트
   useEffect(() => {
-    fetchSnapshots();
-  }, [fetchSnapshots]);
+    if (!client || !connected || !roomUuid) return;
 
-  // Polling
-  useInterval(() => {
-    fetchSnapshots();
-  }, POLLING_INTERVAL);
+    console.log(
+      `[WebSocket] 스냅샷 구독 시작: /topic/room/${roomUuid}/snapshots`
+    );
+
+    const subscription = client.subscribe(
+      `/topic/room/${roomUuid}/snapshots`,
+      (message) => {
+        try {
+          const data = JSON.parse(message.body);
+          console.log("[WebSocket] 스냅샷 생성 알림 수신:", data);
+          console.log("[WebSocket] 전체 메시지 상세:", {
+            timestamp: data.timestamp,
+            timestampType: typeof data.timestamp,
+            snapshotCreatedAt: data.snapshot?.createdAt,
+            snapshotCreatedAtType: typeof data.snapshot?.createdAt,
+            fullData: data,
+          });
+
+          if (data.snapshot) {
+            // timestamp가 있으면 우선 사용, 없으면 snapshot.createdAt 사용
+            const createdAtValue = data.timestamp || data.snapshot.createdAt;
+
+            const newSnapshot = {
+              id: data.snapshot.snapshotId,
+              createdAt: new Date(createdAtValue),
+              title: data.snapshot.title,
+              description: data.snapshot.description,
+              code: data.snapshot.code,
+              comments: data.snapshot.comments || [],
+            };
+
+            console.log("[WebSocket] 시간 정보:", {
+              timestamp: data.timestamp,
+              snapshotCreatedAt: data.snapshot.createdAt,
+              usedValue: createdAtValue,
+              parsedDate: new Date(createdAtValue),
+              isValidDate: !isNaN(new Date(createdAtValue).getTime()),
+            });
+
+            console.log("[WebSocket] 새 스냅샷 추가:", newSnapshot);
+
+            // 토스트 알림 표시
+            toast.success("새로운 스냅샷이 생성되었습니다.", {
+              position: "top-right",
+              autoClose: 4000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
+
+            setSnapshots((prevSnapshots) => {
+              const updatedSnapshots = [newSnapshot, ...prevSnapshots];
+              return updatedSnapshots;
+            });
+          }
+        } catch (error) {
+          console.error("[WebSocket] 스냅샷 업데이트 파싱 실패:", error);
+        }
+      }
+    );
+
+    return () => {
+      console.log(
+        `[WebSocket] 스냅샷 구독 해제: /topic/room/${roomUuid}/snapshots`
+      );
+      subscription.unsubscribe();
+    };
+  }, [client, connected, roomUuid]);
+
+  // snapshots 상태가 변경될 때마다 외부 콜백 호출
+  useEffect(() => {
+    if (onSnapshotsUpdate) {
+      onSnapshotsUpdate(snapshots);
+    }
+  }, [snapshots, onSnapshotsUpdate]);
 
   /**
    * 저장된 스냅샷으로 전환

@@ -20,6 +20,24 @@ export interface CommentResponseDTO {
 }
 
 /**
+ * 댓글 생성 요청 DTO
+ */
+export interface CreateCommentRequestDTO {
+  content: string;
+  parentCommentId?: number | null;
+}
+
+/**
+ * 댓글 생성 응답 DTO
+ */
+export interface CreateCommentResponseDTO {
+  commentId: number;
+  parentCommentId: number | null;
+  snapshotId: number;
+  content: string;
+}
+
+/**
  * 댓글 조회 요청
  */
 export async function GET(
@@ -64,10 +82,13 @@ export async function GET(
 /**
  * 질문/댓글 작성 요청
  */
-export async function POST(request, { params }) {
+export async function POST(
+  request: NextRequest,
+  { params }: CommentParams
+) {
   try {
     const { snapshotId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as CreateCommentRequestDTO;
 
     console.log("질문/댓글 작성 요청...");
 
@@ -103,7 +124,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json({
       message: successMessage,
-      data: data.data,
+      data: data.data as CreateCommentResponseDTO,
     });
   } catch (error) {
     console.error("질문/댓글 작성 중 에러가 발생했습니다:", error);

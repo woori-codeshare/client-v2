@@ -1,12 +1,39 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+interface CommentIdParams {
+  params: {
+    roomId: string;
+    snapshotId: string;
+    commentId: string;
+  };
+}
+
+/**
+ * 댓글 수정 요청 DTO
+ */
+export interface UpdateCommentRequestDTO {
+  content: string;
+}
+
+/**
+ * 댓글 수정 응답 DTO
+ */
+export interface UpdateCommentResponseDTO {
+  commentId: number;
+  content: string;
+  updatedAt: string;
+}
 
 /**
  * 댓글 수정 요청
  */
-export async function PATCH(request, { params }) {
+export async function PATCH(
+  request: NextRequest, 
+  { params }: CommentIdParams
+) {
   try {
     const { commentId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as UpdateCommentRequestDTO;
 
     console.log("댓글 수정 요청...");
 
@@ -34,7 +61,7 @@ export async function PATCH(request, { params }) {
 
     return NextResponse.json({
       message: "성공적으로 수정되었습니다.",
-      data: data.data,
+      data: data.data as UpdateCommentResponseDTO,
     });
   } catch (error) {
     console.error("댓글 수정 중 에러가 발생했습니다:", error);

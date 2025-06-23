@@ -76,7 +76,10 @@ export async function PATCH(
 /**
  * 댓글 삭제 요청
  */
-export async function DELETE(request, { params }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: CommentIdParams
+) {
   try {
     const { commentId } = await params;
 
@@ -97,9 +100,9 @@ export async function DELETE(request, { params }) {
       );
     }
 
+    // 서버에서 삭제 API는 응답 데이터가 없음 (ApiResponse<Void>)
     return NextResponse.json({
       message: "성공적으로 삭제되었습니다.",
-      data: data.data,
     });
   } catch (error) {
     console.error("댓글 삭제 중 에러가 발생했습니다:", error);

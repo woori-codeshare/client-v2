@@ -4,23 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { FaQuestion, FaPaperPlane } from "react-icons/fa";
 import MessageItem from "./message-item";
 import { useAlert } from "@/contexts/alert-context";
-import { useWebSocket } from "@/contexts/websocket-context";
-import { toast } from "react-toastify";
 
 /**
  * 질문과 답변을 관리하는 패널 컴포넌트
  * @param {string} roomId - 현재 룸의 고유 식별자
  * @param {string} snapshotId - 현재 스냅샷의 고유 식별자
  * @param {Array} snapshots - 전체 스냅샷 목록
- * @param {Function} onSnapshotsUpdate - 스냅샷 업데이트 핸들러
- * @param {string} roomUuid - 방 UUID (WebSocket 구독용)
  */
 export default function QuestionsPanel({
   roomId,
   snapshotId,
-  snapshots,
-  onSnapshotsUpdate,
-  roomUuid,
+  snapshots
 }) {
   // 사용자 입력 질문을 관리하는 상태
   const [newQuestion, setNewQuestion] = useState("");
@@ -34,7 +28,6 @@ export default function QuestionsPanel({
 
   // 알림 컨텍스트 훅
   const { showAlert } = useAlert();
-  const { client, connected } = useWebSocket();
 
   const [editingId, setEditingId] = useState(null);
 
@@ -139,128 +132,6 @@ export default function QuestionsPanel({
     fetchComments();
   }, [fetchComments]);
 
-  // WebSocket 구독을 통한 실시간 댓글 업데이트
-  useEffect(() => {
-    if (!client || !connected || !roomUuid) return;
-
-    console.log(`[WebSocket] 댓글 구독 시작: /topic/room/${roomUuid}/comments`);
-
-    const subscription = client.subscribe(
-      `/topic/room/${roomUuid}/comments`,
-      (message) => {
-        try {
-          const data = JSON.parse(message.body);
-          console.log("[WebSocket] 댓글 생성 알림 수신:", data);
-
-          console.log("[WebSocket] 댓글 이벤트:", data.eventType, data.comment);
-
-          // 댓글 목록 새로고침 (모든 이벤트에 대해)
-          fetchComments();
-
-          // 이벤트 타입별 토스트 알림 표시
-          switch (data.eventType) {
-            case "COMMENT_CREATED":
-              toast.info("새로운 질문이 등록되었습니다.", {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              });
-              break;
-            case "REPLY_CREATED":
-              toast.info("새로운 답변이 등록되었습니다.", {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              });
-              break;
-            case "COMMENT_UPDATED":
-              toast.info("댓글이 수정되었습니다.", {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              });
-              break;
-            case "COMMENT_DELETED":
-              toast.info("댓글이 삭제되었습니다.", {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              });
-              break;
-            case "COMMENT_RESOLVED":
-              toast.success("댓글이 해결되었습니다.", {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              });
-              break;
-            case "COMMENT_UNRESOLVED":
-              toast.warning("댓글이 미해결로 변경되었습니다.", {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              });
-              break;
-            default:
-              console.log("알 수 없는 댓글 이벤트:", data.eventType);
-          }
-        } catch (error) {
-          console.error("[WebSocket] 댓글 업데이트 파싱 실패:", error);
-        }
-      }
-    );
-
-    return () => {
-      console.log(
-        `[WebSocket] 댓글 구독 해제: /topic/room/${roomUuid}/comments`
-      );
-      subscription.unsubscribe();
-    };
-  }, [client, connected, roomUuid, snapshotId, fetchComments]);
-
-  /**
-   * 스냅샷의 댓글 목록을 업데이트하는 함수
-   * @param {Object} newComment - 새로 추가된 댓글
-   */
-  const updateSnapshotComments = useCallback(
-    (newComment) => {
-      if (!snapshots || !snapshotId) return;
-
-      // 스냅샷 목록에서 현재 스냅샷을 찾아 댓글 추가
-      const updatedSnapshots = snapshots.map((snapshot) => {
-        if (snapshot.id === parseInt(snapshotId)) {
-          return {
-            ...snapshot,
-            comments: [...(snapshot.comments || []), newComment],
-          };
-        }
-        return snapshot;
-      });
-
-      // 상위 컴포넌트의 스냅샷 상태 업데이트
-      onSnapshotsUpdate?.(updatedSnapshots);
-    },
-    [snapshotId, snapshots, onSnapshotsUpdate]
-  );
-
   /**
    * 답변 작성 모드를 토글하는 함수
    * @param {number|Object} messageData - 답변할 메시지의 ID 또는 답변 데이터
@@ -341,9 +212,6 @@ export default function QuestionsPanel({
         setNewQuestion("");
       }
 
-      // 스냅샷의 comments 배열 업데이트
-      updateSnapshotComments(newMessage);
-
       showAlert(data.message || "Comment created successfully", "success");
     } catch (error) {
       showAlert("Server connection error", "error");
@@ -421,8 +289,6 @@ export default function QuestionsPanel({
           }
           return snapshot;
         });
-
-        onSnapshotsUpdate?.(updatedSnapshots);
       }
 
       setEditingId(null);
@@ -469,7 +335,6 @@ export default function QuestionsPanel({
         return snapshot;
       });
 
-      onSnapshotsUpdate(updatedSnapshots);
       showAlert(data.message || "댓글이 삭제되었습니다.", "success");
     } catch (error) {
       showAlert("서버 연결 오류가 발생했습니다.", "error");
@@ -525,7 +390,6 @@ export default function QuestionsPanel({
         return snapshot;
       });
 
-      onSnapshotsUpdate(updatedSnapshots);
       showAlert(
         solved
           ? "질문이 해결 완료되었습니다."

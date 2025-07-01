@@ -280,19 +280,8 @@ export default function CodeShareRoomPage() {
 
       if (!response.ok) {
         toast.error(data.error || "스냅샷 생성에 실패했습니다.");
-        return;
       }
 
-      const newSnapshot = {
-        id: data.data.snapshotId,
-        createdAt: new Date(data.data.createdAt),
-        title: data.data.title,
-        description: data.data.description,
-        code: data.data.code,
-      };
-
-      setSnapshots((prev) => [newSnapshot, ...prev]);
-      toast.success("스냅샷이 생성되었습니다.");
     } catch (error) {
       toast.error("서버 오류가 발생했습니다.");
     }

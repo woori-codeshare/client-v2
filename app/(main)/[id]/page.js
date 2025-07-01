@@ -318,6 +318,43 @@ export default function CodeShareRoomPage() {
     };
   }, [client, connected, roomInfo?.uuid, isAuthorized]);
 
+  // 방 입장 후 WebSocket 구독으로 실시간 투표 업데이트
+  useEffect(() => {
+    if (!client || !connected || !roomInfo?.uuid || !isAuthorized) {
+      return;
+    }
+
+    console.log(`WebSocket 투표 구독 시작: ${roomInfo.uuid}`);
+
+    const subscription = client.subscribe(
+      `/topic/room/${roomInfo.uuid}/votes`,
+      (message) => {
+        try {
+          const data = JSON.parse(message.body);
+          console.log("WebSocket으로 투표 업데이트 수신:", data);
+
+          // 투표 결과가 업데이트되면 스냅샷을 새로고침
+          // 투표는 스냅샷에 직접 포함되지 않으므로 전체 새로고침
+          fetchSnapshots();
+
+          toast.success("투표 결과가 업데이트되었습니다.", {
+            position: "top-right",
+            autoClose: 2000,
+          });
+        } catch (error) {
+          console.error("WebSocket 투표 메시지 파싱 실패:", error);
+        }
+      }
+    );
+
+    return () => {
+      if (subscription) {
+        console.log("WebSocket 투표 구독 해제");
+        subscription.unsubscribe();
+      }
+    };
+  }, [client, connected, roomInfo?.uuid, isAuthorized, fetchSnapshots]);
+
   /**
    * 방 입장 처리
    */

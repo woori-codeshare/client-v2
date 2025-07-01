@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { FaVoteYea } from "react-icons/fa";
 import { useAlert } from "@/contexts/alert-context";
-import { useWebSocket } from "@/contexts/websocket-context";
-import { toast } from "react-toastify";
 
 const VOTE_TYPES = {
   POSITIVE: {
@@ -45,9 +43,8 @@ const VOTE_TYPES = {
 const getStorageKey = (roomId, snapshotId) => `vote_${roomId}_${snapshotId}`;
 
 // 학습 내용 이해도를 체크하기 위한 투표 패널 컴포넌트
-export default function VotingPanel({ roomId, snapshotId, roomUuid }) {
+export default function VotingPanel({ roomId, snapshotId }) {
   const { showAlert } = useAlert();
-  const { client, connected } = useWebSocket();
   const [loading, setLoading] = useState(false);
   const [userVote, setUserVote] = useState(null);
   const [voteResults, setVoteResults] = useState(null);
@@ -110,52 +107,6 @@ export default function VotingPanel({ roomId, snapshotId, roomUuid }) {
   useEffect(() => {
     fetchVoteResults();
   }, [fetchVoteResults, snapshotId]);
-
-  // WebSocket 구독을 통한 실시간 투표 결과 업데이트
-  useEffect(() => {
-    if (!client || !connected || !roomUuid) return;
-
-    console.log(
-      `[WebSocket] 투표 결과 구독 시작: /topic/room/${roomUuid}/votes`
-    );
-
-    const subscription = client.subscribe(
-      `/topic/room/${roomUuid}/votes`,
-      (message) => {
-        try {
-          const data = JSON.parse(message.body);
-          console.log("[WebSocket] 투표 결과 업데이트 수신:", data);
-
-          if (data.voteResult && data.voteResult.voteCounts) {
-            console.log(
-              "[WebSocket] 투표 결과 업데이트:",
-              data.voteResult.voteCounts
-            );
-            setVoteResults(data.voteResult.voteCounts);
-
-            // 토스트 알림 표시
-            toast.info("투표 결과가 업데이트되었습니다.", {
-              position: "top-right",
-              autoClose: 3000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-            });
-          }
-        } catch (error) {
-          console.error("[WebSocket] 투표 결과 업데이트 파싱 실패:", error);
-        }
-      }
-    );
-
-    return () => {
-      console.log(
-        `[WebSocket] 투표 결과 구독 해제: /topic/room/${roomUuid}/votes`
-      );
-      subscription.unsubscribe();
-    };
-  }, [client, connected, roomUuid]);
 
   const handleVoteClick = (voteType) => {
     if (loading || userVote) return;

@@ -64,41 +64,184 @@ export default function CodeShareRoomPage() {
     }
   }, [id]);
 
-  // 방 입장 후 초기 스냅샷 로드
-  useEffect(() => {
-    const fetchSnapshots = async () => {
-      if (!roomInfo?.uuid || !isAuthorized) {
+  // 스냅샷을 서버에서 가져오는 함수
+  const fetchSnapshots = useCallback(async () => {
+    if (!roomInfo?.uuid || !isAuthorized) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/rooms/${roomInfo.uuid}/snapshots`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Failed to fetch snapshots:", data.error);
         return;
       }
 
-      try {
-        const response = await fetch(`/api/rooms/${roomInfo.uuid}/snapshots`);
-        const data = await response.json();
+      const formattedSnapshots = data.data
+        .map((snapshot) => ({
+          id: snapshot.snapshotId,
+          createdAt: new Date(snapshot.createdAt),
+          title: snapshot.title,
+          description: snapshot.description,
+          code: snapshot.code,
+          comments: snapshot.comments || [],
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt);
 
-        if (!response.ok) {
-          console.error("Failed to fetch snapshots:", data.error);
-          return;
+      setSnapshots(formattedSnapshots);
+    } catch (error) {
+      console.error("Error fetching snapshots:", error);
+    }
+  }, [roomInfo?.uuid, isAuthorized]);
+
+  // 방 입장 후 초기 스냅샷 로드
+  useEffect(() => {
+    fetchSnapshots();
+  }, [fetchSnapshots]);
+
+  // 방 입장 후 WebSocket 구독으로 실시간 질문 업데이트 (스냅샷 새로고침 트리거)
+  useEffect(() => {
+    if (!client || !connected || !roomInfo?.uuid || !isAuthorized) {
+      return;
+    }
+
+    console.log(`WebSocket 질문 구독 시작: ${roomInfo.uuid}`);
+
+    const subscription = client.subscribe(
+      `/topic/room/${roomInfo.uuid}/comments`,
+      (message) => {
+        try {
+          const data = JSON.parse(message.body);
+          console.log("WebSocket으로 질문 업데이트 수신:", data);
+
+          // 서버에서 보내는 데이터 구조: { roomId, snapshotId, commentId, comment, eventType, timestamp }
+          if (data.snapshotId && data.eventType) {
+            const targetSnapshotId = data.snapshotId;
+            const commentData = data.comment; // CommentListResponse 객체
+            const commentId = data.commentId;
+
+            setSnapshots((prev) => {
+              return prev.map((snapshot) => {
+                if (snapshot.id === targetSnapshotId) {
+                  let updatedComments = [...(snapshot.comments || [])];
+
+                  switch (data.eventType) {
+                    case "COMMENT_CREATED":
+                    case "REPLY_CREATED":
+                      // 새 댓글/답글 추가 (중복 체크)
+                      if (
+                        commentData &&
+                        !updatedComments.some(
+                          (c) => c.commentId === commentData.commentId
+                        )
+                      ) {
+                        updatedComments.push({
+                          commentId: commentData.commentId,
+                          content: commentData.content,
+                          createdAt: commentData.createdAt,
+                          solved: commentData.solved || false,
+                          parentCommentId: commentData.parentCommentId || 0,
+                          replies: [],
+                        });
+                      }
+                      break;
+
+                    case "COMMENT_UPDATED":
+                      // 댓글 수정
+                      if (commentData) {
+                        updatedComments = updatedComments.map((comment) =>
+                          comment.commentId === commentData.commentId
+                            ? {
+                                ...comment,
+                                content: commentData.content,
+                                updatedAt: commentData.updatedAt,
+                              }
+                            : comment
+                        );
+                      }
+                      break;
+
+                    case "COMMENT_DELETED":
+                      // 댓글 삭제 (commentId만 있고 comment 객체는 null)
+                      updatedComments = updatedComments.filter(
+                        (comment) => comment.commentId !== commentId
+                      );
+                      break;
+
+                    case "COMMENT_RESOLVED":
+                      // 해결 상태 변경
+                      if (commentData) {
+                        updatedComments = updatedComments.map((comment) =>
+                          comment.commentId === commentData.commentId
+                            ? { ...comment, solved: commentData.solved }
+                            : comment
+                        );
+                      }
+                      break;
+
+                    case "COMMENT_UNRESOLVED":
+                      // 미해결 상태 변경
+                      if (commentData) {
+                        updatedComments = updatedComments.map((comment) =>
+                          comment.commentId === commentData.commentId
+                            ? { ...comment, solved: false }
+                            : comment
+                        );
+                      }
+                      break;
+                  }
+
+                  console.log(
+                    `스냅샷 ${targetSnapshotId}의 댓글 업데이트:`,
+                    updatedComments
+                  );
+                  return {
+                    ...snapshot,
+                    comments: updatedComments,
+                  };
+                }
+                return snapshot;
+              });
+            });
+
+            // 이벤트 타입별 토스트 메시지
+            const toastMessages = {
+              COMMENT_CREATED: "새로운 질문이 등록되었습니다.",
+              REPLY_CREATED: "새로운 답변이 등록되었습니다.",
+              COMMENT_UPDATED: "댓글이 수정되었습니다.",
+              COMMENT_DELETED: "댓글이 삭제되었습니다.",
+              COMMENT_RESOLVED: "댓글이 해결되었습니다.",
+              COMMENT_UNRESOLVED: "댓글이 미해결로 변경되었습니다.",
+            };
+
+            const message =
+              toastMessages[data.eventType] || "질문이 업데이트되었습니다.";
+            toast.success(message, {
+              position: "top-right",
+              autoClose: 2000,
+            });
+          } else {
+            // 데이터 구조가 예상과 다른 경우 fallback으로 전체 새로고침
+            console.log("예상과 다른 데이터 구조, 전체 새로고침:", data);
+            fetchSnapshots();
+          }
+        } catch (error) {
+          console.error("WebSocket 질문 메시지 파싱 실패:", error);
+          // 에러 발생 시 fallback으로 전체 새로고침
+          fetchSnapshots();
         }
+      }
+    );
 
-        const formattedSnapshots = data.data
-          .map((snapshot) => ({
-            id: snapshot.snapshotId,
-            createdAt: new Date(snapshot.createdAt),
-            title: snapshot.title,
-            description: snapshot.description,
-            code: snapshot.code,
-            comments: snapshot.comments || [],
-          }))
-          .sort((a, b) => b.createdAt - a.createdAt);
-
-        setSnapshots(formattedSnapshots);
-      } catch (error) {
-        console.error("Error fetching snapshots:", error);
+    return () => {
+      if (subscription) {
+        console.log("WebSocket 질문 구독 해제");
+        subscription.unsubscribe();
       }
     };
-
-    fetchSnapshots();
-  }, [roomInfo?.uuid, isAuthorized]);
+  }, [client, connected, roomInfo?.uuid, isAuthorized, fetchSnapshots]);
 
   // 방 입장 후 WebSocket 구독으로 실시간 스냅샷 업데이트
   useEffect(() => {
@@ -281,7 +424,6 @@ export default function CodeShareRoomPage() {
       if (!response.ok) {
         toast.error(data.error || "스냅샷 생성에 실패했습니다.");
       }
-
     } catch (error) {
       toast.error("서버 오류가 발생했습니다.");
     }

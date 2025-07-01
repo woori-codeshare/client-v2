@@ -86,8 +86,6 @@ export default function CodeEditorLayout({
             roomId={roomId}
             snapshotId={snapshotId}
             snapshots={snapshots}
-            onSnapshotsUpdate={onSnapshotsUpdate}
-            roomUuid={roomUuid}
           />
         );
       case "voting":

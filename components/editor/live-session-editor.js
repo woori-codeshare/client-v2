@@ -5,7 +5,6 @@ import { FaCode, FaCopy, FaCamera, FaCheck, FaEraser } from "react-icons/fa";
 import CreateSnapshotModal from "./create-snapshot-modal";
 import { detectLanguage } from "@/utils/detect-language";
 import "../../styles/editor-theme.css";
-// import RoomUsersCount from "@/components/features/room/room-users-count";
 import { useWebSocket } from "@/contexts/websocket-context";
 import { DarkWriteableEditor, LightWriteableEditor } from "./variants";
 import { INITIAL_CODE } from "@/constants/initial-data";
@@ -283,9 +282,6 @@ export default function LiveSessionEditor({
             )}
           </div>
         </div>
-
-        {/* 우측: 참여자 수 */}
-        {/*<RoomUsersCount roomId={roomId} />*/}
       </div>
 
       {/* Monaco 에디터 영역 */}

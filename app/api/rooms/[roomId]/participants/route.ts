@@ -1,9 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { EnterRoomResponseDTO } from "@/types/room.type";
+
+interface ParticipantParams {
+  params: {
+    roomId: string;
+  };
+}
 
 /**
  * 방 참가 요청
  */
-export async function POST(request, { params }) {
+export async function POST(
+  request: NextRequest,
+  { params }: ParticipantParams
+) {
   try {
     const { roomId } = await params;
     const { searchParams } = new URL(request.url);
@@ -34,7 +44,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json({
       message: "방에 성공적으로 참가되었습니다.",
-      data: data.data,
+      data: data.data as EnterRoomResponseDTO,
     });
   } catch (error) {
     console.error("방 참가 중 에러가 발생했습니다:", error);

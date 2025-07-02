@@ -1,9 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { SnapshotResponseDTO, CreateSnapshotRequestDTO, CreateSnapshotResponseDTO } from "@/types/snapshot.type";
+
+interface GetSnapshotParams {
+  params: {
+    roomId: string;
+  };
+}
 
 /**
  * 코드 스냅샷 조회 요청
  */
-export async function GET(request, { params }) {
+export async function GET(
+  request: NextRequest,
+  { params }: GetSnapshotParams
+) {
   try {
     const { roomId } = await params;
 
@@ -28,7 +38,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json({
       message: "스냅샷을 조회하는데 성공했습니다.",
-      data: data.data,
+      data: data.data as SnapshotResponseDTO[],
     });
   } catch (error) {
     console.error("스냅샷 조회 중 에러가 발생했습니다:", error);
@@ -43,14 +53,19 @@ export async function GET(request, { params }) {
 /**
  * 코드 스냅샷 생성 요청
  */
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { roomId, title, description, code } = body;
+    const { roomId, title, description, code } = body as {
+      roomId: string;
+      title: string;
+      description: string;
+      code: string;
+    };
 
     console.log("스냅샷 생성 요청...");
 
-    const requestBody = { title, description, code };
+    const requestBody: CreateSnapshotRequestDTO = { title, description, code };
 
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
     const response = await fetch(`${API_URL}/api/v1/snapshots/${roomId}`, {
@@ -74,7 +89,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       message: "스냅샷이 성공적으로 생성되었습니다.",
-      data: data.data,
+      data: data.data as CreateSnapshotResponseDTO,
     });
   } catch (error) {
     console.error("스냅샷 생성 중 에러가 발생했습니다:", error);

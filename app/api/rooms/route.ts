@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { CreateRoomRequestDTO, CreateRoomResponseDTO } from "@/types/room.type";
 
 /**
  * 방 생성 요청
  */
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as CreateRoomRequestDTO;
 
     console.log("방 생성 요청...");
 
@@ -33,7 +34,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       message: "방이 성공적으로 생성되었습니다.",
-      data: data.data,
+      data: data.data as CreateRoomResponseDTO,
     });
   } catch (error) {
     console.error("방 생성 중 에러가 발생했습니다:", error);

@@ -1,12 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { UpdateCommentRequestDTO, UpdateCommentResponseDTO } from "@/types/comment.type";
+
+interface CommentIdParams {
+  params: {
+    roomId: string;
+    snapshotId: string;
+    commentId: string;
+  };
+}
 
 /**
  * 댓글 수정 요청
  */
-export async function PATCH(request, { params }) {
+export async function PATCH(
+  request: NextRequest, 
+  { params }: CommentIdParams
+) {
   try {
     const { commentId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as UpdateCommentRequestDTO;
 
     console.log("댓글 수정 요청...");
 
@@ -34,7 +46,7 @@ export async function PATCH(request, { params }) {
 
     return NextResponse.json({
       message: "성공적으로 수정되었습니다.",
-      data: data.data,
+      data: data.data as UpdateCommentResponseDTO,
     });
   } catch (error) {
     console.error("댓글 수정 중 에러가 발생했습니다:", error);
@@ -49,7 +61,10 @@ export async function PATCH(request, { params }) {
 /**
  * 댓글 삭제 요청
  */
-export async function DELETE(request, { params }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: CommentIdParams
+) {
   try {
     const { commentId } = await params;
 
@@ -70,9 +85,9 @@ export async function DELETE(request, { params }) {
       );
     }
 
+    // 서버에서 삭제 API는 응답 데이터가 없음 (ApiResponse<Void>)
     return NextResponse.json({
       message: "성공적으로 삭제되었습니다.",
-      data: data.data,
     });
   } catch (error) {
     console.error("댓글 삭제 중 에러가 발생했습니다:", error);

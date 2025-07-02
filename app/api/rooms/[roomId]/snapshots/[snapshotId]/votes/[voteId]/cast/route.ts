@@ -1,16 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { VoteType, VoteRequestDTO, VoteResponseDTO } from "@/types/vote.type";
+
+interface VoteParams {
+  params: {
+    roomId: string;
+    snapshotId: string;
+    voteId: string;
+  };
+}
 
 /**
  * 투표 진행 요청
  */
-export async function POST(request, { params }) {
+export async function POST(
+  request: NextRequest,
+  { params }: VoteParams
+) {
   try {
     const { voteId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as VoteRequestDTO;
     const { voteType } = body;
 
     // voteType 유효성 검사
-    const validVoteTypes = ["POSITIVE", "NEUTRAL", "NEGATIVE"];
+    const validVoteTypes = Object.values(VoteType);
     if (!validVoteTypes.includes(voteType)) {
       return NextResponse.json(
         { error: "유효하지 않은 투표 유형입니다." },
@@ -42,7 +54,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json({
       message: "투표가 성공적으로 진행되었습니다.",
-      data: data.data,
+      data: data.data as VoteResponseDTO,
     });
   } catch (error) {
     console.error("투표 진행 중 에러가 발생했습니다:", error);

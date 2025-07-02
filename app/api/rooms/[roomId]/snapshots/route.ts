@@ -1,9 +1,41 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+interface GetSnapshotParams {
+  params: {
+    roomId: string;
+  };
+}
+
+/**
+ * 서버로부터 받는 댓글 DTO
+ */
+export interface CommentResponseDTO {
+  commentId: number;
+  parentCommentId: number | null;
+  content: string;
+  solved: boolean;
+  createdAt: string; // ISO date string
+}
+
+/**
+ * 서버로부터 받는 스냅샷 상세 응답 DTO
+ */
+export interface SnapshotResponseDTO {
+  snapshotId: number;
+  title: string;
+  description: string;
+  code: string;
+  createdAt: string; // ISO date string
+  comments: CommentResponseDTO[];
+}
 
 /**
  * 코드 스냅샷 조회 요청
  */
-export async function GET(request, { params }) {
+export async function GET(
+  request: NextRequest,
+  { params }: GetSnapshotParams
+) {
   try {
     const { roomId } = await params;
 
@@ -28,7 +60,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json({
       message: "스냅샷을 조회하는데 성공했습니다.",
-      data: data.data,
+      data: data.data as SnapshotResponseDTO[],
     });
   } catch (error) {
     console.error("스냅샷 조회 중 에러가 발생했습니다:", error);

@@ -8,6 +8,7 @@ const WebSocketContext = createContext(null);
 export function WebSocketProvider({ children }) {
   const [client, setClient] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [nickname, setNickname] = useState(null);
 
   useEffect(() => {
@@ -25,10 +26,12 @@ export function WebSocketProvider({ children }) {
       onConnect: () => {
         console.log("[WebSocket] 연결 성공");
         setConnected(true);
+        setConnecting(false);
       },
       onDisconnect: () => {
         console.log("[WebSocket] 연결 끊김");
         setConnected(false);
+        setConnecting(false);
       },
       onStompError: (frame) => {
         console.error("[WebSocket] STOMP 에러:", frame.headers["message"]);
@@ -39,9 +42,11 @@ export function WebSocketProvider({ children }) {
       },
       onWebSocketClose: (event) => {
         console.log("[WebSocket] 연결 종료:", event.code, event.reason);
+        setConnected(false);
       },
       beforeConnect: () => {
         console.log("[WebSocket] 연결 시도 중...");
+        setConnecting(true);
       },
       connectHeaders: {
         "heart-beat": "10000,10000" // 10초
@@ -64,7 +69,7 @@ export function WebSocketProvider({ children }) {
 
   return (
     <WebSocketContext.Provider
-      value={{ client, connected, nickname, setNickname }}
+      value={{ client, connected, connecting, nickname, setNickname }}
     >
       {children}
     </WebSocketContext.Provider>

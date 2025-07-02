@@ -14,25 +14,27 @@ export function WebSocketProvider({ children }) {
     const stompClient = new Client({
       brokerURL: process.env.NEXT_PUBLIC_WS_URL,
       debug: function (str) {
-        console.log(str);
+        if (str.includes('heart-beat') || str.includes('CONNECT') || str.includes('DISCONNECT')) {
+          console.log('[WebSocket]', str);
+        }
       },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
-        console.log("Connected to WebSocket");
+        console.log("[WebSocket] 연결 성공");
         setConnected(true);
       },
       onDisconnect: () => {
-        console.log("Disconnected from WebSocket");
+        console.log("[WebSocket] 연결 끊김");
         setConnected(false);
       },
       onStompError: (frame) => {
-        console.error("Broker reported error:", frame.headers["message"]);
-        console.error("Additional details:", frame.body);
+        console.error("[WebSocket] STOMP 에러:", frame.headers["message"]);
+        console.error("[WebSocket] 에러 상세:", frame.body);
       },
       onWebSocketError: (event) => {
-        console.error("WebSocket error:", event);
+        console.error("[WebSocket] 연결 에러:", event);
       },
       connectHeaders: {
         "heart-beat": "10000,10000" // 10초
@@ -43,7 +45,7 @@ export function WebSocketProvider({ children }) {
       stompClient.activate();
       setClient(stompClient);
     } catch (error) {
-      console.error("Failed to activate STOMP client:", error);
+      console.error("[WebSocket] STOMP 클라이언트 활성화 실패:", error);
     }
 
     return () => {
@@ -65,7 +67,7 @@ export function WebSocketProvider({ children }) {
 export function useWebSocket() {
   const context = useContext(WebSocketContext);
   if (context === undefined) {
-    throw new Error("useWebSocket must be used within a WebSocketProvider");
+    throw new Error("useWebSocket은 WebSocketProvider 내에서 사용되어야 합니다");
   }
   return context;
 }

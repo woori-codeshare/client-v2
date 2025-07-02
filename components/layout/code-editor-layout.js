@@ -29,7 +29,6 @@ import LiveSessionEditor from "@/components/editor/live-session-editor";
  * @param {Function} props.onPanelChange - 패널 변경 핸들러
  * @param {string} props.roomId - 방 ID
  * @param {string|null} props.snapshotId - 현재 선택된 스냅샷 ID
- * @param {Function} props.onSnapshotsUpdate - 스냅샷 업데이트 핸들러
  * @param {string} props.roomUuid - 방 UUID
  */
 export default function CodeEditorLayout({
@@ -51,7 +50,6 @@ export default function CodeEditorLayout({
   onPanelChange,
   roomId,
   snapshotId,
-  onSnapshotsUpdate,
   roomUuid,
 }) {
   const renderEditor = () => {
@@ -88,18 +86,10 @@ export default function CodeEditorLayout({
             roomId={roomId}
             snapshotId={snapshotId}
             snapshots={snapshots}
-            onSnapshotsUpdate={onSnapshotsUpdate}
-            roomUuid={roomUuid}
           />
         );
       case "voting":
-        return (
-          <VotingPanel
-            roomId={roomId}
-            snapshotId={snapshotId}
-            roomUuid={roomUuid}
-          />
-        );
+        return <VotingPanel roomId={roomId} snapshotId={snapshotId} />;
       default:
         return null;
     }
@@ -145,9 +135,7 @@ export default function CodeEditorLayout({
         `}
         >
           <VersionsPanel
-            roomUuid={roomUuid}
             snapshots={snapshots}
-            onSnapshotsUpdate={onSnapshotsUpdate}
             currentVersion={currentVersion}
             setCurrentVersion={onVersionChange}
           />

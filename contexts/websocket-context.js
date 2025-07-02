@@ -24,7 +24,9 @@ export function WebSocketProvider({ children }) {
         if (
           str.includes("heart-beat") ||
           str.includes("CONNECT") ||
-          str.includes("DISCONNECT")
+          str.includes("DISCONNECT") ||
+          str.includes("PING") ||
+          str.includes("PONG")
         ) {
           console.log("[WebSocket]", str);
         }

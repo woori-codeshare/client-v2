@@ -37,6 +37,12 @@ export function WebSocketProvider({ children }) {
       onWebSocketError: (event) => {
         console.error("[WebSocket] 연결 에러:", event);
       },
+      onWebSocketClose: (event) => {
+        console.log("[WebSocket] 연결 종료:", event.code, event.reason);
+      },
+      beforeConnect: () => {
+        console.log("[WebSocket] 연결 시도 중...");
+      },
       connectHeaders: {
         "heart-beat": "10000,10000" // 10초
       },

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ResolveCommentRequestDTO, ResolveCommentResponseDTO } from "@/types/comment.type";
 
 interface ResolveParams {
   params: {
@@ -6,21 +7,6 @@ interface ResolveParams {
     snapshotId: string;
     commentId: string;
   };
-}
-
-/**
- * 댓글 해결 상태 변경 요청 DTO
- */
-export interface ResolveCommentRequestDTO {
-  solved: boolean;
-}
-
-/**
- * 댓글 해결 상태 변경 응답 DTO
- */
-export interface ResolveCommentResponseDTO {
-  commentId: number;
-  solved: boolean;
 }
 
 /**

@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { EnterRoomResponseDTO } from "@/types/room.type";
 
 interface ParticipantParams {
   params: {
     roomId: string;
   };
-}
-
-/**
- * 방 참가 응답 DTO
- */
-export interface EnterRoomResponseDTO {
-  roomId: number;
-  uuid: string;
-  title: string;
-  createdAt: string;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { VoteType, VoteRequestDTO, VoteResponseDTO } from "@/types/vote.type";
 
 interface VoteParams {
   params: {
@@ -6,30 +7,6 @@ interface VoteParams {
     snapshotId: string;
     voteId: string;
   };
-}
-
-/**
- * 투표 타입
- */
-export enum VoteType {
-  POSITIVE = "POSITIVE",
-  NEUTRAL = "NEUTRAL",
-  NEGATIVE = "NEGATIVE",
-}
-
-/**
- * 투표 진행 요청 DTO
- */
-export interface VoteRequestDTO {
-  voteType: VoteType;
-}
-
-/**
- * 투표 진행 응답 DTO
- */
-export interface VoteResponseDTO {
-  voteId: number;
-  voteType: VoteType;
 }
 
 /**

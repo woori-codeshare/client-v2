@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { VoteResultResponseDTO } from "@/types/vote.type";
 
 interface VoteResultParams {
   params: {
@@ -6,14 +7,6 @@ interface VoteResultParams {
     snapshotId: string;
     voteId: string;
   };
-}
-
-/**
- * 투표 결과 응답 DTO
- */
-export interface VoteResultResponseDTO {
-  voteId: number;
-  voteCounts: Record<string, number>;
 }
 
 /**

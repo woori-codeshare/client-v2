@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { UpdateCommentRequestDTO, UpdateCommentResponseDTO } from "@/types/comment.type";
 
 interface CommentIdParams {
   params: {
@@ -6,22 +7,6 @@ interface CommentIdParams {
     snapshotId: string;
     commentId: string;
   };
-}
-
-/**
- * 댓글 수정 요청 DTO
- */
-export interface UpdateCommentRequestDTO {
-  content: string;
-}
-
-/**
- * 댓글 수정 응답 DTO
- */
-export interface UpdateCommentResponseDTO {
-  commentId: number;
-  content: string;
-  updatedAt: string;
 }
 
 /**

@@ -1,40 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { CommentResponseDTO, CreateCommentRequestDTO, CreateCommentResponseDTO } from "@/types/comment.type";
 
 interface CommentParams {
   params: {
     roomId: string;
     snapshotId: string;
   };
-}
-
-/**
- * 댓글 목록 조회 응답 DTO
- */
-export interface CommentResponseDTO {
-  commentId: number;
-  parentCommentId: number | null;
-  content: string;
-  solved: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * 댓글 생성 요청 DTO
- */
-export interface CreateCommentRequestDTO {
-  content: string;
-  parentCommentId?: number | null;
-}
-
-/**
- * 댓글 생성 응답 DTO
- */
-export interface CreateCommentResponseDTO {
-  commentId: number;
-  parentCommentId: number | null;
-  snapshotId: number;
-  content: string;
 }
 
 /**

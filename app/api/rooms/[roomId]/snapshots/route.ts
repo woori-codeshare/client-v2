@@ -1,54 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SnapshotResponseDTO, CreateSnapshotRequestDTO, CreateSnapshotResponseDTO } from "@/types/snapshot.type";
 
 interface GetSnapshotParams {
   params: {
     roomId: string;
   };
-}
-
-/**
- * 서버로부터 받는 댓글 DTO
- */
-export interface CommentResponseDTO {
-  commentId: number;
-  parentCommentId: number | null;
-  content: string;
-  solved: boolean;
-  createdAt: string; // ISO date string
-}
-
-/**
- * 서버로부터 받는 스냅샷 상세 응답 DTO
- */
-export interface SnapshotResponseDTO {
-  snapshotId: number;
-  title: string;
-  description: string;
-  code: string;
-  createdAt: string; // ISO date string
-  comments: CommentResponseDTO[];
-}
-
-/**
- * 스냅샷 생성 요청 DTO
- */
-export interface CreateSnapshotRequestDTO {
-  title: string;
-  description: string;
-  code: string;
-}
-
-/**
- * 스냅샷 생성 응답 DTO
- */
-export interface CreateSnapshotResponseDTO {
-  roomId: number;
-  snapshotId: number;
-  voteId: number;
-  title: string;
-  description: string;
-  code: string;
-  createdAt: string;
 }
 
 /**

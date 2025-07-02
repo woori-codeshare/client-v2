@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FaQuestion, FaPaperPlane } from "react-icons/fa";
+import { toast } from "react-toastify";
 import MessageItem from "./message-item";
-import { useAlert } from "@/contexts/alert-context";
 
 /**
  * 질문과 답변을 관리하는 패널 컴포넌트
@@ -25,9 +25,6 @@ export default function QuestionsPanel({
 
   // 전체 질문/답변 목록을 관리하는 상태
   const [messages, setMessages] = useState([]);
-
-  // 알림 컨텍스트 훅
-  const { showAlert } = useAlert();
 
   const [editingId, setEditingId] = useState(null);
 
@@ -157,7 +154,7 @@ export default function QuestionsPanel({
     e.preventDefault();
 
     if (!snapshotId) {
-      showAlert("Snapshot ID is required", "error");
+      toast.error("Snapshot ID is required");
       return;
     }
 
@@ -185,7 +182,7 @@ export default function QuestionsPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        showAlert(data.message || "Failed to create comment", "error");
+        toast.error(data.message || "Failed to create comment");
         return;
       }
 
@@ -212,9 +209,9 @@ export default function QuestionsPanel({
         setNewQuestion("");
       }
 
-      showAlert(data.message || "Comment created successfully", "success");
+      toast.success(data.message || "Comment created successfully");
     } catch (error) {
-      showAlert("Server connection error", "error");
+      toast.error("Server connection error");
     }
   };
 
@@ -252,7 +249,7 @@ export default function QuestionsPanel({
       console.log("Edit response:", data);
 
       if (!response.ok) {
-        showAlert(data.message || "댓글 수정에 실패했습니다.", "error");
+        toast.error(data.message || "댓글 수정에 실패했습니다.");
         return;
       }
 
@@ -292,10 +289,10 @@ export default function QuestionsPanel({
       }
 
       setEditingId(null);
-      showAlert("댓글이 수정되었습니다.", "success");
+      toast.success("댓글이 수정되었습니다.");
     } catch (error) {
       console.error("Edit error:", error);
-      showAlert("서버 연결 오류가 발생했습니다.", "error");
+      toast.error("서버 연결 오류가 발생했습니다.");
     }
   };
 
@@ -315,7 +312,7 @@ export default function QuestionsPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        showAlert(data.error || "댓글 삭제에 실패했습니다.", "error");
+        toast.error(data.error || "댓글 삭제에 실패했습니다.");
         return;
       }
 
@@ -335,9 +332,9 @@ export default function QuestionsPanel({
         return snapshot;
       });
 
-      showAlert(data.message || "댓글이 삭제되었습니다.", "success");
+      toast.success(data.message || "댓글이 삭제되었습니다.");
     } catch (error) {
-      showAlert("서버 연결 오류가 발생했습니다.", "error");
+      toast.error("서버 연결 오류가 발생했습니다.");
     }
   };
 
@@ -362,7 +359,7 @@ export default function QuestionsPanel({
       const data = await response.json();
 
       if (!response.ok) {
-        showAlert(data.error || "해결 상태 변경에 실패했습니다.", "error");
+        toast.error(data.error || "해결 상태 변경에 실패했습니다.");
         return;
       }
 
@@ -390,14 +387,13 @@ export default function QuestionsPanel({
         return snapshot;
       });
 
-      showAlert(
+      toast.success(
         solved
           ? "질문이 해결 완료되었습니다."
-          : "질문이 미해결로 변경되었습니다.",
-        "success"
+          : "질문이 미해결로 변경되었습니다."
       );
     } catch (error) {
-      showAlert("서버 연결 오류가 발생했습니다.", "error");
+      toast.error("서버 연결 오류가 발생했습니다.");
     }
   };
 

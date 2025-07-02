@@ -1,7 +1,6 @@
 import "./globals.css";
 import "react-toastify/dist/ReactToastify.css";
 import Header from "../components/layout/header";
-import { AlertProvider } from "@/contexts/alert-context";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 import { ToastContainer } from "react-toastify";
 
@@ -69,23 +68,21 @@ export default function RootLayout({ children }) {
         className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden"
         suppressHydrationWarning
       >
-        <AlertProvider>
-          <Header />
-          {children}
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="auto"
-            toastClassName="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
-          />
-        </AlertProvider>
+        <Header />
+        {children}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="auto"
+          toastClassName="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
+        />
       </body>
     </html>
   );

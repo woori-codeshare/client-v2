@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import RoomCreateModal from "@/components/features/room/room-create-modal";
 import { RoomStorage } from "@/utils/room-storage";
-import { useAlert } from "@/contexts/alert-context";
 import MockCodeEditorLayout from "@/components/layout/mock-code-editor-layout";
 
 /**
@@ -16,7 +16,6 @@ import MockCodeEditorLayout from "@/components/layout/mock-code-editor-layout";
  */
 export default function CreateRoomPage() {
   const router = useRouter();
-  const { showAlert } = useAlert();
   const [showCreateModal, setShowCreateModal] = useState(true);
 
   const handleCreateRoom = async (title, password) => {
@@ -32,7 +31,7 @@ export default function CreateRoomPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        showAlert(data.error || "방 생성에 실패했습니다.", "error");
+        toast.error(data.error || "방 생성에 실패했습니다.");
         return;
       }
 
@@ -46,11 +45,11 @@ export default function CreateRoomPage() {
 
       RoomStorage.saveRoom(roomInfo);
 
-      showAlert("방이 성공적으로 생성되었습니다.", "success");
+      toast.success("방이 성공적으로 생성되었습니다.");
       router.push(`/${data.data.uuid}`);
     } catch (error) {
       console.error("방 생성 실패:", error);
-      showAlert("서버 오류가 발생했습니다.", "error");
+      toast.error("서버 오류가 발생했습니다.");
     }
   };
 

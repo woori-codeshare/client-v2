@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { FaVoteYea } from "react-icons/fa";
-import { useAlert } from "@/contexts/alert-context";
+import { toast } from "react-toastify";
 
 const VOTE_TYPES = {
   POSITIVE: {
@@ -44,7 +44,6 @@ const getStorageKey = (roomId, snapshotId) => `vote_${roomId}_${snapshotId}`;
 
 // 학습 내용 이해도를 체크하기 위한 투표 패널 컴포넌트
 export default function VotingPanel({ roomId, snapshotId }) {
-  const { showAlert } = useAlert();
   const [loading, setLoading] = useState(false);
   const [userVote, setUserVote] = useState(null);
   const [voteResults, setVoteResults] = useState(null);
@@ -120,7 +119,7 @@ export default function VotingPanel({ roomId, snapshotId }) {
     const storageKey = getStorageKey(roomId, snapshotId);
     const previousVote = localStorage.getItem(storageKey);
     if (previousVote) {
-      showAlert("이미 투표하셨습니다.", "error");
+      toast.error("이미 투표하셨습니다.");
       setSelectedVote(null);
       return;
     }
@@ -146,9 +145,9 @@ export default function VotingPanel({ roomId, snapshotId }) {
 
       setUserVote(voteType);
       await fetchVoteResults();
-      showAlert("투표가 완료되었습니다.", "success");
+      toast.success("투표가 완료되었습니다.");
     } catch (error) {
-      showAlert(error.message, "error");
+      toast.error(error.message);
     } finally {
       setLoading(false);
       setSelectedVote(null);

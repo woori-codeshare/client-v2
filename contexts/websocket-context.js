@@ -35,7 +35,7 @@ export function WebSocketProvider({ children }) {
         console.error("WebSocket error:", event);
       },
       connectHeaders: {
-        "heart-beat": "0,0",
+        "heart-beat": "10000,10000" // 10초
       },
     });
 

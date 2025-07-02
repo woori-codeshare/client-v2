@@ -19,6 +19,7 @@ export function WebSocketProvider({ children }) {
         }
       },
       reconnectDelay: 5000,
+      maxReconnectAttempts: 10,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {

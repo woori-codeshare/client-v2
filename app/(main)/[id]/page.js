@@ -7,7 +7,7 @@ import { INITIAL_WIDTHS, PANEL_CONFIGS } from "@/constants/panel-config";
 import CodeEditorLayout from "@/components/layout/code-editor-layout";
 import RoomEnterModal from "@/components/features/room/room-enter-modal";
 import { RoomStorage } from "@/utils/room-storage";
-import { useWebSocket } from "@/contexts/websocket-context";
+import { useWebSocketManager } from "@/hooks/useWebSocketManager";
 import { toast } from "react-toastify";
 import { sanitizeCode, desanitizeCode } from "@/utils/code-formatter";
 
@@ -18,7 +18,6 @@ import { sanitizeCode, desanitizeCode } from "@/utils/code-formatter";
 export default function CodeShareRoomPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { client, connected } = useWebSocket();
 
   // Room state
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -26,9 +25,13 @@ export default function CodeShareRoomPage() {
   const [roomInfo, setRoomInfo] = useState(null);
 
   // Editor state
-  const [code, setCode] = useState(desanitizeCode(INITIAL_CODE));
+  const [liveCode, setLiveCode] = useState(desanitizeCode(INITIAL_CODE)); // 라이브 세션 코드
+  const [snapshotCode, setSnapshotCode] = useState(""); // 스냅샷 코드
   const [snapshots, setSnapshots] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
+
+  // 현재 표시될 코드 (라이브 코드 또는 스냅샷 코드)
+  const displayCode = currentVersion !== null ? snapshotCode : liveCode;
 
   // Layout state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -75,7 +78,7 @@ export default function CodeShareRoomPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Failed to fetch snapshots:", data.error);
+        console.error("스냅샷 가져오기 실패:", data.error);
         return;
       }
 
@@ -92,7 +95,7 @@ export default function CodeShareRoomPage() {
 
       setSnapshots(formattedSnapshots);
     } catch (error) {
-      console.error("Error fetching snapshots:", error);
+      console.error("스냅샷 가져오기 오류:", error);
     }
   }, [roomInfo?.uuid, isAuthorized]);
 
@@ -100,260 +103,6 @@ export default function CodeShareRoomPage() {
   useEffect(() => {
     fetchSnapshots();
   }, [fetchSnapshots]);
-
-  // 방 입장 후 WebSocket 구독으로 실시간 질문 업데이트 (스냅샷 새로고침 트리거)
-  useEffect(() => {
-    if (!client || !connected || !roomInfo?.uuid || !isAuthorized) {
-      return;
-    }
-
-    console.log(`WebSocket 질문 구독 시작: ${roomInfo.uuid}`);
-
-    const subscription = client.subscribe(
-      `/topic/room/${roomInfo.uuid}/comments`,
-      (message) => {
-        try {
-          const data = JSON.parse(message.body);
-          console.log("WebSocket으로 질문 업데이트 수신:", data);
-
-          // 서버에서 보내는 데이터 구조: { roomId, snapshotId, commentId, comment, eventType, timestamp }
-          if (data.snapshotId && data.eventType) {
-            const targetSnapshotId = data.snapshotId;
-            const commentData = data.comment; // CommentListResponse 객체
-            const commentId = data.commentId;
-
-            setSnapshots((prev) => {
-              return prev.map((snapshot) => {
-                if (snapshot.id === targetSnapshotId) {
-                  let updatedComments = [...(snapshot.comments || [])];
-
-                  switch (data.eventType) {
-                    case "COMMENT_CREATED":
-                    case "REPLY_CREATED":
-                      // 새 댓글/답글 추가 (중복 체크)
-                      if (
-                        commentData &&
-                        !updatedComments.some(
-                          (c) => c.commentId === commentData.commentId
-                        )
-                      ) {
-                        updatedComments.push({
-                          commentId: commentData.commentId,
-                          content: commentData.content,
-                          createdAt: commentData.createdAt,
-                          solved: commentData.solved || false,
-                          parentCommentId: commentData.parentCommentId || 0,
-                          replies: [],
-                        });
-                      }
-                      break;
-
-                    case "COMMENT_UPDATED":
-                      // 댓글 수정
-                      if (commentData) {
-                        updatedComments = updatedComments.map((comment) =>
-                          comment.commentId === commentData.commentId
-                            ? {
-                                ...comment,
-                                content: commentData.content,
-                                updatedAt: commentData.updatedAt,
-                              }
-                            : comment
-                        );
-                      }
-                      break;
-
-                    case "COMMENT_DELETED":
-                      // 댓글 삭제 (commentId만 있고 comment 객체는 null)
-                      updatedComments = updatedComments.filter(
-                        (comment) => comment.commentId !== commentId
-                      );
-                      break;
-
-                    case "COMMENT_RESOLVED":
-                      // 해결 상태 변경
-                      if (commentData) {
-                        updatedComments = updatedComments.map((comment) =>
-                          comment.commentId === commentData.commentId
-                            ? { ...comment, solved: commentData.solved }
-                            : comment
-                        );
-                      }
-                      break;
-
-                    case "COMMENT_UNRESOLVED":
-                      // 미해결 상태 변경
-                      if (commentData) {
-                        updatedComments = updatedComments.map((comment) =>
-                          comment.commentId === commentData.commentId
-                            ? { ...comment, solved: false }
-                            : comment
-                        );
-                      }
-                      break;
-                  }
-
-                  console.log(
-                    `스냅샷 ${targetSnapshotId}의 댓글 업데이트:`,
-                    updatedComments
-                  );
-                  return {
-                    ...snapshot,
-                    comments: updatedComments,
-                  };
-                }
-                return snapshot;
-              });
-            });
-
-            // 이벤트 타입별 토스트 메시지
-            const toastMessages = {
-              COMMENT_CREATED: "새로운 질문이 등록되었습니다.",
-              REPLY_CREATED: "새로운 답변이 등록되었습니다.",
-              COMMENT_UPDATED: "댓글이 수정되었습니다.",
-              COMMENT_DELETED: "댓글이 삭제되었습니다.",
-              COMMENT_RESOLVED: "댓글이 해결되었습니다.",
-              COMMENT_UNRESOLVED: "댓글이 미해결로 변경되었습니다.",
-            };
-
-            const message =
-              toastMessages[data.eventType] || "질문이 업데이트되었습니다.";
-            toast.success(message, {
-              position: "top-right",
-              autoClose: 2000,
-            });
-          } else {
-            // 데이터 구조가 예상과 다른 경우 fallback으로 전체 새로고침
-            console.log("예상과 다른 데이터 구조, 전체 새로고침:", data);
-            fetchSnapshots();
-          }
-        } catch (error) {
-          console.error("WebSocket 질문 메시지 파싱 실패:", error);
-          // 에러 발생 시 fallback으로 전체 새로고침
-          fetchSnapshots();
-        }
-      }
-    );
-
-    return () => {
-      if (subscription) {
-        console.log("WebSocket 질문 구독 해제");
-        subscription.unsubscribe();
-      }
-    };
-  }, [client, connected, roomInfo?.uuid, isAuthorized, fetchSnapshots]);
-
-  // 방 입장 후 WebSocket 구독으로 실시간 스냅샷 업데이트
-  useEffect(() => {
-    if (!client || !connected || !roomInfo?.uuid || !isAuthorized) {
-      console.log("WebSocket 스냅샷 구독 준비 중:", {
-        client: !!client,
-        connected,
-        roomUuid: roomInfo?.uuid,
-        isAuthorized,
-      });
-      return;
-    }
-
-    console.log(`WebSocket 스냅샷 구독 시작: ${roomInfo.uuid}`);
-
-    const subscription = client.subscribe(
-      `/topic/room/${roomInfo.uuid}/snapshots`,
-      (message) => {
-        try {
-          const data = JSON.parse(message.body);
-          console.log("WebSocket으로 스냅샷 업데이트 수신:", data);
-
-          // 서버에서 SnapshotCreatedResponse 객체를 직접 보냄
-          if (data.snapshot && data.roomId) {
-            const newSnapshot = {
-              id: data.snapshot.snapshotId,
-              createdAt: new Date(data.snapshot.createdAt),
-              title: data.snapshot.title,
-              description: data.snapshot.description,
-              code: data.snapshot.code,
-              comments: data.snapshot.comments || [],
-            };
-
-            console.log("새 스냅샷을 상태에 추가:", newSnapshot);
-
-            setSnapshots((prev) => {
-              // 중복 체크 - 이미 존재하는 스냅샷인지 확인
-              if (prev.some((snapshot) => snapshot.id === newSnapshot.id)) {
-                console.log("이미 존재하는 스냅샷, 건너뛰기:", newSnapshot.id);
-                return prev;
-              }
-
-              const updatedSnapshots = [newSnapshot, ...prev];
-              console.log("스냅샷 목록 업데이트 완료:", updatedSnapshots);
-              return updatedSnapshots;
-            });
-
-            toast.success(
-              `새로운 스냅샷이 생성되었습니다: ${newSnapshot.title}`,
-              {
-                position: "top-right",
-                autoClose: 4000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-              }
-            );
-          }
-        } catch (error) {
-          console.error("WebSocket 스냅샷 메시지 파싱 실패:", error);
-        }
-      }
-    );
-
-    console.log("WebSocket 스냅샷 구독 완료");
-
-    // 컴포넌트 언마운트 시 구독 해제
-    return () => {
-      if (subscription) {
-        console.log("WebSocket 스냅샷 구독 해제");
-        subscription.unsubscribe();
-      }
-    };
-  }, [client, connected, roomInfo?.uuid, isAuthorized]);
-
-  // 방 입장 후 WebSocket 구독으로 실시간 투표 업데이트
-  useEffect(() => {
-    if (!client || !connected || !roomInfo?.uuid || !isAuthorized) {
-      return;
-    }
-
-    console.log(`WebSocket 투표 구독 시작: ${roomInfo.uuid}`);
-
-    const subscription = client.subscribe(
-      `/topic/room/${roomInfo.uuid}/votes`,
-      (message) => {
-        try {
-          const data = JSON.parse(message.body);
-          console.log("WebSocket으로 투표 업데이트 수신:", data);
-
-          // 투표 결과가 업데이트되면 스냅샷을 새로고침
-          // 투표는 스냅샷에 직접 포함되지 않으므로 전체 새로고침
-          fetchSnapshots();
-
-          toast.success("투표 결과가 업데이트되었습니다.", {
-            position: "top-right",
-            autoClose: 2000,
-          });
-        } catch (error) {
-          console.error("WebSocket 투표 메시지 파싱 실패:", error);
-        }
-      }
-    );
-
-    return () => {
-      if (subscription) {
-        console.log("WebSocket 투표 구독 해제");
-        subscription.unsubscribe();
-      }
-    };
-  }, [client, connected, roomInfo?.uuid, isAuthorized, fetchSnapshots]);
 
   /**
    * 방 입장 처리
@@ -391,6 +140,153 @@ export default function CodeShareRoomPage() {
       toast.error("서버 오류가 발생했습니다.");
     }
   };
+
+  // 웹소켓 콜백 함수들
+  const handleCodeUpdate = useCallback((newCode) => {
+    console.log("라이브 코드 업데이트 적용 중...");
+    setLiveCode(newCode);
+  }, []);
+
+  const handleSnapshotUpdate = useCallback((newSnapshot) => {
+    // 유효한 스냅샷 ID가 있는지 확인
+    if (!newSnapshot.id) {
+      console.warn("새 스냅샷에 유효한 ID가 없어 무시됩니다:", newSnapshot);
+      return;
+    }
+
+    console.log("새 스냅샷을 상태에 추가:", newSnapshot);
+
+    setSnapshots((prev) => {
+      // 중복 체크 - 이미 존재하는 스냅샷인지 확인
+      if (prev.some((snapshot) => snapshot.id === newSnapshot.id)) {
+        console.log("이미 존재하는 스냅샷, 건너뛰기:", newSnapshot.id);
+        return prev;
+      }
+
+      const updatedSnapshots = [newSnapshot, ...prev];
+      console.log("스냅샷 목록 업데이트 완료:", updatedSnapshots);
+      return updatedSnapshots;
+    });
+  }, []);
+
+  const handleCommentUpdate = useCallback((data) => {
+    const targetSnapshotId = data.snapshotId;
+    const commentData = data.comment;
+    const commentId = data.commentId;
+
+    setSnapshots((prev) => {
+      return prev.map((snapshot) => {
+        if (snapshot.id === targetSnapshotId) {
+          let updatedComments = [...(snapshot.comments || [])];
+
+          switch (data.eventType) {
+            case "COMMENT_CREATED":
+            case "REPLY_CREATED":
+              if (
+                commentData &&
+                !updatedComments.some(
+                  (c) => c.commentId === commentData.commentId
+                )
+              ) {
+                updatedComments.push({
+                  commentId: commentData.commentId,
+                  content: commentData.content,
+                  createdAt: commentData.createdAt,
+                  solved: commentData.solved || false,
+                  parentCommentId: commentData.parentCommentId || 0,
+                  replies: [],
+                });
+              }
+              break;
+
+            case "COMMENT_UPDATED":
+              if (commentData) {
+                updatedComments = updatedComments.map((comment) =>
+                  comment.commentId === commentData.commentId
+                    ? {
+                        ...comment,
+                        content: commentData.content,
+                        updatedAt: commentData.updatedAt,
+                      }
+                    : comment
+                );
+              }
+              break;
+
+            case "COMMENT_DELETED":
+              updatedComments = updatedComments.filter(
+                (comment) => comment.commentId !== commentId
+              );
+              break;
+
+            case "COMMENT_RESOLVED":
+              if (commentData) {
+                updatedComments = updatedComments.map((comment) =>
+                  comment.commentId === commentData.commentId
+                    ? { ...comment, solved: commentData.solved }
+                    : comment
+                );
+              }
+              break;
+
+            case "COMMENT_UNRESOLVED":
+              if (commentData) {
+                updatedComments = updatedComments.map((comment) =>
+                  comment.commentId === commentData.commentId
+                    ? { ...comment, solved: false }
+                    : comment
+                );
+              }
+              break;
+          }
+
+          console.log(
+            `스냅샷 ${targetSnapshotId}의 댓글 업데이트:`,
+            updatedComments
+          );
+          return {
+            ...snapshot,
+            comments: updatedComments,
+          };
+        }
+        return snapshot;
+      });
+    });
+  }, []);
+
+  const handleVoteUpdate = useCallback(
+    (data) => {
+      // 투표 결과가 업데이트되면 스냅샷을 새로고침
+      fetchSnapshots();
+    },
+    [fetchSnapshots]
+  );
+
+  // 웹소켓 관리
+  const { publishCode } = useWebSocketManager({
+    roomInfo,
+    isAuthorized,
+    onCodeUpdate: handleCodeUpdate,
+    onSnapshotUpdate: handleSnapshotUpdate,
+    onCommentUpdate: handleCommentUpdate,
+    onVoteUpdate: handleVoteUpdate,
+  });
+
+  /**
+   * 코드 변경 처리 및 WebSocket으로 전송
+   */
+  const handleCodeChange = useCallback(
+    (newCode) => {
+      if (newCode === displayCode || isReadOnly) return; // 같은 코드이거나 읽기 전용 모드면 무시
+
+      // 라이브 코드만 업데이트 (라이브 세션일 때만 호출됨)
+      setLiveCode(newCode);
+
+      // WebSocket을 통해 코드 변경 전송
+      publishCode(newCode);
+    },
+    [displayCode, isReadOnly, publishCode]
+  );
 
   /**
    * 우측 패널(질문, 투표) 토글 처리
@@ -432,7 +328,7 @@ export default function CodeShareRoomPage() {
    * 새로운 스냅샷 생성
    */
   const createSnapshot = async (snapshotData) => {
-    if (!code) return;
+    if (!liveCode) return; // 라이브 코드가 있어야 스냅샷 생성 가능
 
     const room = RoomStorage.getRoom(id);
     const roomId = room?.roomId;
@@ -452,7 +348,7 @@ export default function CodeShareRoomPage() {
           roomId,
           title: snapshotData.title,
           description: snapshotData.description,
-          code: sanitizeCode(code),
+          code: sanitizeCode(liveCode), // 라이브 코드로 스냅샷 생성
         }),
       });
 
@@ -471,13 +367,16 @@ export default function CodeShareRoomPage() {
    */
   const handleVersionChange = (index) => {
     if (index === null) {
+      // 라이브 세션으로 돌아가기
       setCurrentVersion(null);
+      setSnapshotCode(""); // 스냅샷 코드 초기화
       setActivePanel(null); // 현재 세션으로 돌아갈 때는 패널 닫기
       return;
     }
 
     if (snapshots[index]) {
-      setCode(desanitizeCode(snapshots[index].code));
+      // 스냅샷 선택
+      setSnapshotCode(desanitizeCode(snapshots[index].code));
       setCurrentVersion(index);
     }
   };
@@ -485,8 +384,8 @@ export default function CodeShareRoomPage() {
   return (
     <>
       <CodeEditorLayout
-        code={code}
-        onCodeChange={setCode}
+        code={displayCode}
+        onCodeChange={handleCodeChange}
         isDisabled={!isAuthorized}
         onCreateSnapshot={createSnapshot}
         isSidebarOpen={isSidebarOpen}

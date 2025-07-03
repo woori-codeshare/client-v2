@@ -6,7 +6,6 @@ import CreateSnapshotModal from "./create-snapshot-modal";
 import { detectLanguage } from "@/utils/detect-language";
 import "../../styles/editor-theme.css";
 // import RoomUsersCount from "@/components/features/room/room-users-count";
-import { useWebSocket } from "@/contexts/websocket-context";
 import { DarkWriteableEditor, LightWriteableEditor } from "./variants";
 import { INITIAL_CODE } from "@/constants/initial-data";
 
@@ -22,13 +21,11 @@ export default function LiveSessionEditor({
   isRightPanelOpen,
   roomId,
 }) {
-  const { client, connected } = useWebSocket();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [detectedLanguage, setDetectedLanguage] = useState("javascript");
   const [isDark, setIsDark] = useState(false);
   const editorRef = useRef(null);
-  const [subscription, setSubscription] = useState(null);
 
   /**
    * 디바운스 함수 구현
@@ -52,92 +49,13 @@ export default function LiveSessionEditor({
     [detectedLanguage]
   );
 
-  // 코드 업데이트 WebSocket 구독
-  useEffect(() => {
-    if (!client || !connected || !roomId || isDisabled) {
-      console.log("WebSocket not ready or disabled:", {
-        client: !!client,
-        connected,
-        roomId,
-        isDisabled,
-      });
-      return;
-    }
-
-    try {
-      console.log("Subscribing to code updates for room:", roomId);
-      const newSubscription = client.subscribe(
-        `/topic/room/${roomId}/code`,
-        (message) => {
-          try {
-            const data = JSON.parse(message.body);
-            console.log("Received code update:", data);
-            if (data.eventType === "UPDATE" && data.code !== code) {
-              console.log("Updating code...");
-              onCodeChange(data.code);
-            }
-          } catch (error) {
-            console.error("Failed to parse code update:", error);
-          }
-        }
-      );
-
-      setSubscription(newSubscription);
-
-      return () => {
-        console.log("Unsubscribing from code updates");
-        if (newSubscription) {
-          newSubscription.unsubscribe();
-          setSubscription(null);
-        }
-      };
-    } catch (error) {
-      console.error("WebSocket subscription error:", error);
-    }
-  }, [client, connected, roomId, onCodeChange, isDisabled]);
-
   // 코드 변경 핸들러
   const handleCodeChange = useCallback(
     (newCode) => {
       if (newCode === code) return; // 같은 코드면 무시
       onCodeChange(newCode);
-
-      // WebSocket을 통해 코드 변경 전송
-      if (client && connected && roomId && !isDisabled) {
-        try {
-          console.log("Publishing code update:", {
-            roomId,
-            codeLength: newCode.length,
-          });
-
-          client.publish({
-            destination: "/app/update.code",
-            body: JSON.stringify({
-              roomId: parseInt(roomId, 10),
-              code: newCode,
-            }),
-          });
-        } catch (error) {
-          console.error("Failed to send code update:", error);
-        }
-      } else {
-        console.log("Cannot send update:", {
-          client: !!client,
-          connected,
-          roomId,
-          isDisabled,
-        });
-      }
     },
-    [
-      client,
-      connected,
-      roomId,
-      code,
-      onCodeChange,
-      debouncedDetectLanguage,
-      isDisabled,
-    ]
+    [code, onCodeChange]
   );
 
   // 초기 언어 감지 및 코드 변경 시 언어 감지
@@ -178,7 +96,7 @@ export default function LiveSessionEditor({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      console.error("복사 실패:", err);
     }
   };
 

@@ -26,9 +26,13 @@ export default function CodeShareRoomPage() {
   const [roomInfo, setRoomInfo] = useState(null);
 
   // Editor state
-  const [code, setCode] = useState(desanitizeCode(INITIAL_CODE));
+  const [liveCode, setLiveCode] = useState(desanitizeCode(INITIAL_CODE)); // 라이브 세션 코드
+  const [snapshotCode, setSnapshotCode] = useState(""); // 스냅샷 코드
   const [snapshots, setSnapshots] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
+
+  // 현재 표시될 코드 (라이브 코드 또는 스냅샷 코드)
+  const displayCode = currentVersion !== null ? snapshotCode : liveCode;
 
   // Layout state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -75,7 +79,7 @@ export default function CodeShareRoomPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Failed to fetch snapshots:", data.error);
+        console.error("스냅샷 가져오기 실패:", data.error);
         return;
       }
 
@@ -92,7 +96,7 @@ export default function CodeShareRoomPage() {
 
       setSnapshots(formattedSnapshots);
     } catch (error) {
-      console.error("Error fetching snapshots:", error);
+      console.error("스냅샷 가져오기 오류:", error);
     }
   }, [roomInfo?.uuid, isAuthorized]);
 
@@ -318,6 +322,49 @@ export default function CodeShareRoomPage() {
     };
   }, [client, connected, roomInfo?.uuid, isAuthorized]);
 
+  // 코드 업데이트 WebSocket 구독
+  useEffect(() => {
+    if (!client || !connected || !roomInfo?.roomId || !isAuthorized) {
+      console.log("WebSocket 코드 구독 준비 중:", {
+        client: !!client,
+        connected,
+        roomId: roomInfo?.roomId,
+        isAuthorized,
+      });
+      return;
+    }
+
+    try {
+      console.log("WebSocket 코드 구독 시작:", roomInfo.roomId);
+
+      const subscription = client.subscribe(
+        `/topic/room/${roomInfo.roomId}/code`,
+        (message) => {
+          try {
+            const data = JSON.parse(message.body);
+            console.log("코드 업데이트 수신:", data);
+
+            if (data.eventType === "UPDATE") {
+              console.log("라이브 코드 업데이트 적용 중...");
+              setLiveCode(data.code);
+            }
+          } catch (error) {
+            console.error("코드 업데이트 메시지 파싱 실패:", error);
+          }
+        }
+      );
+
+      return () => {
+        console.log("코드 업데이트 구독 해제");
+        if (subscription) {
+          subscription.unsubscribe();
+        }
+      };
+    } catch (error) {
+      console.error("WebSocket 코드 구독 오류:", error);
+    }
+  }, [client, connected, roomInfo?.roomId, isAuthorized]);
+
   // 방 입장 후 WebSocket 구독으로 실시간 투표 업데이트
   useEffect(() => {
     if (!client || !connected || !roomInfo?.uuid || !isAuthorized) {
@@ -393,6 +440,61 @@ export default function CodeShareRoomPage() {
   };
 
   /**
+   * 코드 변경 처리 및 WebSocket으로 전송
+   */
+  const handleCodeChange = useCallback(
+    (newCode) => {
+      if (newCode === displayCode || isReadOnly) return; // 같은 코드이거나 읽기 전용 모드면 무시
+
+      // 라이브 코드만 업데이트 (라이브 세션일 때만 호출됨)
+      setLiveCode(newCode);
+
+      // WebSocket을 통해 코드 변경 전송
+      if (
+        client &&
+        connected &&
+        roomInfo?.uuid &&
+        isAuthorized &&
+        !isReadOnly
+      ) {
+        try {
+          console.log("코드 업데이트 전송:", {
+            roomUuid: roomInfo.uuid,
+            code: newCode,
+          });
+
+          client.publish({
+            destination: "/app/update.code",
+            body: JSON.stringify({
+              roomId: parseInt(roomInfo.roomId, 10),
+              code: newCode,
+            }),
+          });
+        } catch (error) {
+          console.error("코드 업데이트 전송 실패:", error);
+        }
+      } else {
+        console.log("코드 업데이트 전송 불가:", {
+          client: !!client,
+          connected,
+          roomUuid: roomInfo?.uuid,
+          isAuthorized,
+          isReadOnly,
+        });
+      }
+    },
+    [
+      client,
+      connected,
+      roomInfo?.uuid,
+      roomInfo?.roomId,
+      displayCode,
+      isAuthorized,
+      isReadOnly,
+    ]
+  );
+
+  /**
    * 우측 패널(질문, 투표) 토글 처리
    */
   const togglePanel = (panelName) => {
@@ -432,7 +534,7 @@ export default function CodeShareRoomPage() {
    * 새로운 스냅샷 생성
    */
   const createSnapshot = async (snapshotData) => {
-    if (!code) return;
+    if (!liveCode) return; // 라이브 코드가 있어야 스냅샷 생성 가능
 
     const room = RoomStorage.getRoom(id);
     const roomId = room?.roomId;
@@ -452,7 +554,7 @@ export default function CodeShareRoomPage() {
           roomId,
           title: snapshotData.title,
           description: snapshotData.description,
-          code: sanitizeCode(code),
+          code: sanitizeCode(liveCode), // 라이브 코드로 스냅샷 생성
         }),
       });
 
@@ -471,13 +573,16 @@ export default function CodeShareRoomPage() {
    */
   const handleVersionChange = (index) => {
     if (index === null) {
+      // 라이브 세션으로 돌아가기
       setCurrentVersion(null);
+      setSnapshotCode(""); // 스냅샷 코드 초기화
       setActivePanel(null); // 현재 세션으로 돌아갈 때는 패널 닫기
       return;
     }
 
     if (snapshots[index]) {
-      setCode(desanitizeCode(snapshots[index].code));
+      // 스냅샷 선택
+      setSnapshotCode(desanitizeCode(snapshots[index].code));
       setCurrentVersion(index);
     }
   };
@@ -485,8 +590,8 @@ export default function CodeShareRoomPage() {
   return (
     <>
       <CodeEditorLayout
-        code={code}
-        onCodeChange={setCode}
+        code={displayCode}
+        onCodeChange={handleCodeChange}
         isDisabled={!isAuthorized}
         onCreateSnapshot={createSnapshot}
         isSidebarOpen={isSidebarOpen}

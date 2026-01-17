@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import {
   FaRegClock,
   FaUserCircle,
@@ -25,6 +25,31 @@ import { TIMERS } from "@/constants/ui.constants";
  * @param {Function} onDelete - 삭제 핸들러
  * @param {Function} onToggleSolved - 해결 상태 토글 핸들러
  */
+interface ReplyDraft {
+  commentId: number;
+  content: string;
+}
+
+interface MessageData {
+  commentId: number;
+  content: string;
+  createdAt?: string;
+  solved?: boolean;
+  replies?: MessageData[];
+}
+
+interface MessageItemProps {
+  message: MessageData;
+  isReply?: boolean;
+  onReply: (messageData: number | ReplyDraft) => void;
+  replyingTo: ReplyDraft | null;
+  handleSubmit: (e: FormEvent<HTMLFormElement>, parentId?: number | null) => void;
+  onEdit: (commentId: number | null, content?: string) => void;
+  editingId: number | null;
+  onDelete: (commentId: number) => void;
+  onToggleSolved: (commentId: number, solved: boolean) => void;
+}
+
 export default function MessageItem({
   message,
   isReply = false,
@@ -35,7 +60,7 @@ export default function MessageItem({
   editingId, // 새로운 prop: 현재 수정 중인 메시지 ID
   onDelete, // 새로운 prop 추가
   onToggleSolved, // 새로운 prop 추가
-}) {
+}: MessageItemProps) {
   // 상대적 시간 표시 상태 (예: "5분 전")
   const [formattedTime, setFormattedTime] = useState("");
 

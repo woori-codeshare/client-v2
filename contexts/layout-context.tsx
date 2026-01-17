@@ -1,14 +1,15 @@
 "use client";
 
 import { createContext, useContext, ReactNode } from "react";
+import type { PanelType } from "@/hooks/layout/useSidebarPanels";
 
 interface LayoutContextType {
   isSidebarOpen: boolean;
-  activePanel: string | null;
+  activePanel: PanelType;
   leftWidth: number;
   rightWidth: number;
   onSidebarToggle: () => void;
-  onPanelChange: (panelName: string) => void;
+  onPanelChange: (panelName: PanelType) => void;
   onLeftResize: (delta: number) => void;
   onRightResize: (delta: number) => void;
 }
@@ -28,11 +29,11 @@ export function LayoutProvider({
 }: { 
   children: ReactNode;
   isSidebarOpen: boolean;
-  activePanel: string | null;
+  activePanel: PanelType;
   leftWidth: number;
   rightWidth: number;
   onSidebarToggle: () => void;
-  onPanelChange: (panelName: string) => void;
+  onPanelChange: (panelName: PanelType) => void;
   onLeftResize: (delta: number) => void;
   onRightResize: (delta: number) => void;
 }) {

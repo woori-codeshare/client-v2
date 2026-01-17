@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { FaQuestion, FaPaperPlane } from "react-icons/fa";
 import { toast } from "react-toastify";
 import MessageItem from "./message-item";
@@ -12,21 +12,43 @@ import Input from "@/components/ui/input";
 /**
  * 질문과 답변을 관리하는 패널 컴포넌트
  */
+interface ReplyDraft {
+  commentId: number;
+  content: string;
+}
+
+interface RawComment {
+  commentId: number;
+  parentCommentId: number | null;
+  content: string;
+  createdAt: string;
+  solved: boolean;
+}
+
+interface CommentMessage {
+  commentId: number;
+  parentCommentId: number;
+  content: string;
+  createdAt: string;
+  solved: boolean;
+  replies: CommentMessage[];
+}
+
 export default function QuestionsPanel() {
   const { roomId } = useRoom();
   const { snapshots, currentSnapshot } = useSnapshot();
   const snapshotId = currentSnapshot?.id;
   // 사용자 입력 질문을 관리하는 상태
-  const [newQuestion, setNewQuestion] = useState("");
+  const [newQuestion, setNewQuestion] = useState<string>("");
 
   // 답변 작성 중인 질문 정보를 관리하는 상태
   // { commentId: number, content: string } 형태로 저장
-  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyDraft | null>(null);
 
   // 전체 질문/답변 목록을 관리하는 상태
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<CommentMessage[]>([]);
 
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   /**
    * 댓글들을 계층 구조로 정리하는 함수
@@ -69,19 +91,27 @@ export default function QuestionsPanel() {
    *   }
    * ]
    */
-  const organizeComments = (comments) => {
-    const parentComments = []; // 부모 댓글 목록
-    const childComments = new Map(); // 부모-자식 댓글 매핑
+  const organizeComments = (comments: CommentMessage[]): CommentMessage[] => {
+    const parentComments: CommentMessage[] = []; // 부모 댓글 목록
+    const childComments = new Map<number, CommentMessage[]>(); // 부모-자식 댓글 매핑
 
     // 부모-자식 댓글 분류
-    comments.forEach((comment) => {
+    const normalizedComments = comments.map((comment) => ({
+      ...comment,
+      replies: comment.replies ?? [],
+    }));
+
+    normalizedComments.forEach((comment) => {
       if (comment.parentCommentId === 0) {
         parentComments.push(comment);
       } else {
         if (!childComments.has(comment.parentCommentId)) {
           childComments.set(comment.parentCommentId, []);
         }
-        childComments.get(comment.parentCommentId).push(comment);
+        const replies = childComments.get(comment.parentCommentId);
+        if (replies) {
+          replies.push(comment);
+        }
       }
     });
 
@@ -108,11 +138,13 @@ export default function QuestionsPanel() {
         return;
       }
 
+      const rawComments = data.data as RawComment[];
       const organizedMessages = organizeComments(
-        data.data.map((comment) => ({
+        rawComments.map((comment): CommentMessage => ({
           ...comment,
           parentCommentId:
             comment.parentCommentId === null ? 0 : comment.parentCommentId,
+          replies: [],
         }))
       );
 
@@ -135,7 +167,7 @@ export default function QuestionsPanel() {
    *   - number: 최초 답변 시작 시
    *   - Object: 답변 내용 업데이트 시 ({ id, text })
    */
-  const handleReply = (messageData) => {
+  const handleReply = (messageData: number | ReplyDraft) => {
     // 답글 작성 시 데이터 구조 통일
     const isInitialReply = typeof messageData === "number";
     setReplyingTo(
@@ -150,7 +182,7 @@ export default function QuestionsPanel() {
    * @param {Event} e - 폼 제출 이벤트 객체
    * @param {number|null} parentId - 답변의 경우 부모 질문 ID, 새 질문은 null
    */
-  const handleSubmit = async (e, parentId = null) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>, parentId: number | null = null) => {
     e.preventDefault();
 
     if (!snapshotId) {
@@ -220,7 +252,7 @@ export default function QuestionsPanel() {
    * @param {number} commentId - 수정할 댓글 ID
    * @param {string} content - 수정할 내용
    */
-  const handleEdit = async (commentId, content) => {
+  const handleEdit = async (commentId: number | null, content?: string) => {
     // 수정 모드 취소
     if (!commentId) {
       setEditingId(null);
@@ -300,7 +332,7 @@ export default function QuestionsPanel() {
    * 댓글 삭제를 처리하는 함수
    * @param {number} commentId - 삭제할 댓글 ID
    */
-  const handleDelete = async (commentId) => {
+  const handleDelete = async (commentId: number) => {
     try {
       const response = await fetch(
         `/api/rooms/${roomId}/snapshots/${snapshotId}/comments/${commentId}`,
@@ -343,7 +375,7 @@ export default function QuestionsPanel() {
    * @param {number} commentId - 질문 ID
    * @param {boolean} solved - 해결 여부
    */
-  const handleToggleSolved = async (commentId, solved) => {
+  const handleToggleSolved = async (commentId: number, solved: boolean) => {
     try {
       const response = await fetch(
         `/api/rooms/${roomId}/snapshots/${snapshotId}/comments/${commentId}/resolve`,

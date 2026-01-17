@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import Modal from "@/components/ui/modal";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import TextArea from "@/components/ui/textarea";
 import FormField from "@/components/ui/form-field";
 import { TEXT_LENGTH, ERROR_MESSAGES, BUTTON_TEXT } from "@/constants/ui.constants";
+import type { SnapshotData } from "@/types/editor.type";
+
+interface CreateSnapshotModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreateSnapshot: (snapshotData: SnapshotData) => void;
+}
 
 /**
  * 스냅샷 생성을 위한 모달 컴포넌트
@@ -17,14 +24,14 @@ export default function CreateSnapshotModal({
   isOpen,
   onClose,
   onCreateSnapshot,
-}) {
+}: CreateSnapshotModalProps) {
   // 스냅샷 입력 폼 상태 관리
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [titleError, setTitleError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
 
-  const handleTitleChange = (e) => {
+  const handleTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     if (newTitle.length <= TEXT_LENGTH.SNAPSHOT_TITLE_MAX) {
       setTitle(newTitle);
@@ -34,7 +41,7 @@ export default function CreateSnapshotModal({
     }
   };
 
-  const handleDescriptionChange = (e) => {
+  const handleDescriptionChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newDescription = e.target.value;
     if (newDescription.length <= TEXT_LENGTH.SNAPSHOT_DESCRIPTION_MAX) {
       setDescription(newDescription);
@@ -50,7 +57,7 @@ export default function CreateSnapshotModal({
    * 스냅샷 생성 제출 처리
    * 제목이 비어있지 않은 경우에만 처리
    */
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title) return;
 

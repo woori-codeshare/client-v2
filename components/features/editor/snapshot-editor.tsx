@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { FaHistory, FaCopy, FaCheck, FaInfoCircle } from "react-icons/fa";
 import { detectLanguage } from "@/utils/detectLanguage";
 import MonacoEditor from "./monaco-editor";
@@ -14,14 +14,10 @@ export default function SnapshotEditor({
   code,
   title,
   description,
-  isSidebarOpen = false,
-  isRightPanelOpen = false,
 }: SnapshotEditorProps) {
   const [copied, setCopied] = useState(false);
   const [detectedLanguage, setDetectedLanguage] = useState("javascript");
   const isDark = useThemeDetector();
-  const editorRef = useRef(null);
-
   // 초기 언어 감지
   useEffect(() => {
     if (code) {
@@ -42,15 +38,6 @@ export default function SnapshotEditor({
       console.error("Failed to copy:", err);
     }
   };
-
-  // 사이드바나 우측 패널 상태 변경시 에디터 크기 재조정
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.layout();
-    }
-  }, [isSidebarOpen, isRightPanelOpen]);
-
-
 
   return (
     <div className="flex flex-col h-full px-2 py-2">

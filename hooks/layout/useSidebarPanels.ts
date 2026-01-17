@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { INITIAL_WIDTHS } from "@/constants/panel-config";
 
-export type PanelType = "snapshots" | "vote" | "question" | null;
+export type PanelType = "snapshots" | "comments" | "voting" | null;
 
 interface SidebarPanelState {
   isSidebarOpen: boolean;

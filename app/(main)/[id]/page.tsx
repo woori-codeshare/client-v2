@@ -7,7 +7,7 @@ import CodeEditorLayout from "@/components/layout/code-editor-layout";
 import RoomEnterModal from "@/components/features/room/room-enter-modal";
 import { RoomStorage, type RoomInfo } from "@/utils/roomStorage";
 import { useWebSocketManager } from "@/hooks/websocket/useWebSocketManager";
-import { useSidebarPanels } from "@/hooks/layout/useSidebarPanels";
+import { useSidebarPanels, type PanelType } from "@/hooks/layout/useSidebarPanels";
 import { toast } from "react-toastify";
 import { sanitizeCode, desanitizeCode } from "@/utils/codeFormatter";
 import { RoomProvider } from "@/contexts/room-context";
@@ -300,7 +300,7 @@ export default function CodeShareRoomPage() {
    * 우측 패널(질문, 투표) 토글 처리 - 스냅샷 선택시에만 가능
    */
   const handlePanelToggle = useCallback(
-    (panelName: "vote" | "question") => {
+    (panelName: PanelType) => {
       // 현재 세션(currentVersion이 null)인 경우 패널을 열 수 없음
       const canOpen = currentVersion !== null;
       togglePanel(panelName, canOpen);

@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import { FaCode, FaHistory, FaQuestion, FaVoteYea } from "react-icons/fa";
 import { INITIAL_CODE } from "@/constants/initial-data";
 import "@/styles/editor-theme.css";
 
 export default function MockCodeEditorLayout() {
   const [isDark, setIsDark] = useState(false);
-  const editorRef = useRef(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   // 다크모드 감지 및 업데이트
   useEffect(() => {

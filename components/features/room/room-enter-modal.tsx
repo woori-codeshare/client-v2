@@ -1,13 +1,19 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Modal from "@/components/ui/modal";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import FormField from "@/components/ui/form-field";
 
-export default function RoomEnterModal({ isOpen, onClose, onSubmit }) {
+interface RoomEnterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (password: string) => void;
+}
+
+export default function RoomEnterModal({ isOpen, onClose, onSubmit }: RoomEnterModalProps) {
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit(password);
   };

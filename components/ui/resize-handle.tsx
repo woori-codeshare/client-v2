@@ -1,5 +1,7 @@
 "use client";
 
+import type { MouseEvent as ReactMouseEvent } from "react";
+
 /**
  * 패널 크기 조절을 위한 핸들 컴포넌트
  * @param {Object} props
@@ -7,18 +9,24 @@
  * @param {string} props.direction - 리사이즈 방향 ('left' 또는 'right')
  * @param {string} props.className - 추가적인 CSS 클래스
  */
+interface ResizeHandleProps {
+  onResize: (delta: number) => void;
+  direction?: "left" | "right";
+  className?: string;
+}
+
 export default function ResizeHandle({
   onResize,
   direction = "left",
   className = "",
-}) {
+}: ResizeHandleProps) {
   // 마우스 드래그 시작 시 호출되는 이벤트 핸들러
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     let startX = e.pageX; // 드래그 시작 위치
 
     // 마우스 이동 중 호출되는 이벤트 핸들러
-    const handleMouseMove = (moveEvent) => {
+    const handleMouseMove = (moveEvent: MouseEvent) => {
       const currentX = moveEvent.pageX;
       const delta = currentX - startX; // 이동 거리 계산
 

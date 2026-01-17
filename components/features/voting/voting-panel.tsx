@@ -8,7 +8,20 @@ import { useRoom } from "@/contexts/room-context";
 import { useSnapshot } from "@/contexts/snapshot-context";
 import Button from "@/components/ui/button";
 
-const VOTE_TYPES = {
+const VOTE_TYPES: Record<
+  VoteType,
+  {
+    text: string;
+    styles: {
+      bg: string;
+      hover: string;
+      border: string;
+      text: string;
+      ring: string;
+      button: string;
+    };
+  }
+> = {
   POSITIVE: {
     text: "O 이해했습니다",
     styles: {
@@ -97,8 +110,11 @@ export default function VotingPanel() {
 
   // Storage Event 리스너 추가
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === getStorageKey(roomId, snapshotId) && e.newValue) {
+    if (!roomId || !snapshotId) return;
+    const storageKey = getStorageKey(roomId, snapshotId);
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === storageKey && e.newValue) {
         const voteData = JSON.parse(e.newValue);
         setUserVote(voteData.voteType);
         fetchVoteResults(); // 투표 결과도 함께 갱신
@@ -114,14 +130,15 @@ export default function VotingPanel() {
     fetchVoteResults();
   }, [fetchVoteResults, snapshotId]);
 
-  const handleVoteClick = (voteType) => {
+  const handleVoteClick = (voteType: VoteType) => {
     if (loading || userVote) return;
     // 같은 투표를 다시 클릭하면 선택 취소
     setSelectedVote(selectedVote === voteType ? null : voteType);
   };
 
-  const handleConfirmVote = async (voteType) => {
+  const handleConfirmVote = async (voteType: VoteType) => {
     if (loading || userVote) return;
+    if (!roomId || !snapshotId) return;
 
     const storageKey = getStorageKey(roomId, snapshotId);
     const previousVote = localStorage.getItem(storageKey);
@@ -154,7 +171,9 @@ export default function VotingPanel() {
       await fetchVoteResults();
       toast.success("투표가 완료되었습니다.");
     } catch (error) {
-      toast.error(error.message);
+      const message =
+        error instanceof Error ? error.message : "투표에 실패했습니다.";
+      toast.error(message);
     } finally {
       setLoading(false);
       setSelectedVote(null);
@@ -203,7 +222,7 @@ export default function VotingPanel() {
         </p>
 
         <div className="grid grid-cols-1 gap-2">
-          {Object.entries(VOTE_TYPES).map(([type, config]) => (
+          {(Object.entries(VOTE_TYPES) as Array<[VoteType, (typeof VOTE_TYPES)[VoteType]]>).map(([type, config]) => (
             <button
               key={type}
               onClick={() => handleVoteClick(type)}
@@ -221,7 +240,7 @@ export default function VotingPanel() {
                 <span className="text-xs opacity-75">
                   {voteResults?.[type] || 0} votes
                   {totalVotes > 0 &&
-                    ` (${getVotePercentage(voteResults?.[type])}%)`}
+                    ` (${getVotePercentage(voteResults?.[type] ?? 0)}%)`}
                 </span>
               </div>
             </button>

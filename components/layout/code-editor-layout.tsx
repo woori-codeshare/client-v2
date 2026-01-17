@@ -110,8 +110,7 @@ export default function CodeEditorLayout() {
           <ResizeHandle
             onResize={onLeftResize}
             direction="left"
-            className="bg-gray-200 dark:bg-gray-800"
-            z-30
+            className="bg-gray-200 dark:bg-gray-800 z-30"
           />
         )}
       </div>

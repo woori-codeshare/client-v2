@@ -34,7 +34,8 @@ export function SnapshotProvider({
   onVersionChange: (index: number | null) => void;
   fetchSnapshots: () => Promise<void>;
 }) {
-  const currentSnapshot = currentVersion !== null ? snapshots[currentVersion] : null;
+  const currentSnapshot =
+    currentVersion !== null ? snapshots[currentVersion] ?? null : null;
 
   const value: SnapshotContextType = {
     snapshots,

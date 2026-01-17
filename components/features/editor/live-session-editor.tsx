@@ -17,21 +17,19 @@ export default function LiveSessionEditor({
   onCodeChangeAction,
   onCreateSnapshotAction,
   isDisabled = false,
-  isSidebarOpen = false,
-  isRightPanelOpen = false,
 }: LiveSessionEditorProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [detectedLanguage, setDetectedLanguage] = useState("javascript");
   const isDark = useThemeDetector();
-  const editorRef = useRef(null);
-
   // 디바운스를 위한 타이머 ref
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 언어 감지 함수를 컴포넌트 내부에서 디바운스 처리
   const debouncedDetectLanguage = useCallback((newCode: string) => {
-    clearTimeout(debounceTimer.current);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
     debounceTimer.current = setTimeout(() => {
       const detected = detectLanguage(newCode);
       if (detected !== detectedLanguage) {
@@ -43,7 +41,7 @@ export default function LiveSessionEditor({
   // 코드 변경 핸들러
   const handleCodeChange = useCallback(
       (newCode: string | undefined) => {
-        if (newCode === code) return; // 같은 코드면 무시
+        if (newCode === undefined || newCode === code) return; // 같은 코드면 무시
         onCodeChangeAction(newCode);
       },
       [code, onCodeChangeAction]
@@ -97,14 +95,6 @@ export default function LiveSessionEditor({
   const handleClear = () => {
     handleCodeChange(INITIAL_CODE);
   };
-
-  // 사이드바나 우측 패널 상태 변경시 에디터 크기 재조정
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.layout();
-    }
-  }, [isSidebarOpen, isRightPanelOpen]);
-
 
   return (
     <div className="flex flex-col h-full px-2 py-2">

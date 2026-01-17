@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type MouseEventHandler } from "react";
 import { motion } from "framer-motion";
 import { formatRelativeTime } from "@/utils/formatters";
 
@@ -14,12 +14,26 @@ import { formatRelativeTime } from "@/utils/formatters";
  * @param {Function} props.onClick - 스냅샷 클릭 시 호출할 핸들러 함수
  * @param {string} props.layoutId - framer-motion 애니메이션을 위한 레이아웃 ID
  */
+interface SnapshotItemData {
+  id: number | string;
+  title: string;
+  description?: string;
+  createdAt: Date | string | number;
+}
+
+interface SnapshotItemProps {
+  snapshot: SnapshotItemData;
+  isActive: boolean;
+  onClick: MouseEventHandler<HTMLDivElement>;
+  layoutId: string;
+}
+
 export default function SnapshotItem({
   snapshot,
   isActive,
   onClick,
   layoutId,
-}) {
+}: SnapshotItemProps) {
   // 포맷팅된 시간을 저장하는 상태
   const [formattedTime, setFormattedTime] = useState("");
 

@@ -17,7 +17,7 @@ export default function VersionsPanel() {
    * 저장된 스냅샷으로 전환
    * @param {number} index - 사용자가 선택한 스냅샷 인덱스
    */
-  const switchToSnapshot = (index) => {
+  const switchToSnapshot = (index: number) => {
     onVersionChange(index);
   };
 
